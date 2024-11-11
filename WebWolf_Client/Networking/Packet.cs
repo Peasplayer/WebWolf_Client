@@ -1,9 +1,9 @@
-namespace WebWolf_Client;
+namespace WebWolf_Client.Networking;
 
 public class Packet
 {
     public string Sender;
-    public int Type;
+    public PacketType Type;
     
     public Packet(string sender)
     {

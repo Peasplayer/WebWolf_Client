@@ -1,6 +1,4 @@
-using System.Security.Cryptography;
-
-namespace WebWolf_Client;
+namespace WebWolf_Client.Networking;
 
 public class HandshakePacket : Packet
 {
@@ -9,7 +7,6 @@ public class HandshakePacket : Packet
     public HandshakePacket(string sender,string name): base(sender)
     {
         Name = name;
-        Type = 0;
-        
+        Type = PacketType.Handshake;
     }
 }
