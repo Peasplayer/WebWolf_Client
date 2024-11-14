@@ -6,14 +6,11 @@ namespace WebWolf_Client.Networking;
 public class NetworkingManager
 {
     public static NetworkingManager Instance;
-    
-    public string ID { get; private set; }
 
     private WebSocket Socket;
 
     public NetworkingManager()
     {
-        ID = "";
         Instance = this;
     }
 
@@ -42,9 +39,9 @@ public class NetworkingManager
             if (handshake == null)
                 return;
             
-            ID = handshake.Name;
-            Console.WriteLine("ID: " + ID);
-            Socket.Send(JsonConvert.SerializeObject(new HandshakePacket(ID, "Laputa")));
+            PlayerData.LocalPlayer.SetId(handshake.Name);
+            Console.WriteLine("ID: " + PlayerData.LocalPlayer.Id);
+            Socket.Send(JsonConvert.SerializeObject(new HandshakePacket(PlayerData.LocalPlayer.Id, "Laputa")));
         }
         else
         {
@@ -63,7 +60,7 @@ public class NetworkingManager
                         return;
                                 
                     Console.WriteLine($"Player {joinPacketData.Name} joined with ID {joinPacketData.ID}");
-                    PlayerManager.Players[joinPacketData.ID] = joinPacketData.Name;
+                    PlayerManager.Players.Add(new PlayerData(joinPacketData.Name, joinPacketData.ID));
                     break;
                 }
                 case PacketDataType.SyncLobby:
