@@ -24,6 +24,7 @@ class Program
         
         var image = new CanvasImage("C:\\Users\\je446\\Downloads\\Werwolf.jpg");
    
+        
         image.MaxWidth(30);
         AnsiConsole.Write(image);
     }
