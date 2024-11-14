@@ -9,6 +9,8 @@
 
     <ItemGroup>
       <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+      <PackageReference Include="Spectre.Console" Version="0.49.2-preview.0.47" />
+      <PackageReference Include="Spectre.Console.ImageSharp" Version="0.49.2-preview.0.47" />
       <PackageReference Include="websocketsharp.core" Version="1.0.0" />
     </ItemGroup>
 
