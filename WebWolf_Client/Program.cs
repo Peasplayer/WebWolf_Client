@@ -6,13 +6,12 @@ namespace WebWolf_Client;
 
 class Program
 {
-    private static string Name;
     static void Main(string[] args)
     {
         RenderLogo();
         
-        AnsiConsole.Write("Suche dir einen Spielername aus");
-        Name = ChooseName();
+        AnsiConsole.WriteLine("");
+        PlayerData.LocalPlayer = new PlayerData(ChooseName(), null);
         
         var net = new NetworkingManager();
         net.StartConnection("ws://localhost:8443/json");
@@ -21,9 +20,7 @@ class Program
 
     private static void RenderLogo()
     {
-        
         var image = new CanvasImage("C:\\Users\\je446\\Downloads\\Werwolf.jpg");
-   
         
         image.MaxWidth(30);
         AnsiConsole.Write(image);
@@ -31,24 +28,23 @@ class Program
     
     public static string ChooseName()
     {
-        var name = AnsiConsole.Ask<string>("");
+        var name = AnsiConsole.Ask<string>("Suche dir einen Spielernamen aus: ");
         if (name.Length > 15)
         {
-            AnsiConsole.Clear();
-            RenderLogo();
+            
+            ConsoleUtils.ClearConsoleLine(2);
             AnsiConsole.MarkupLine("[red]Der Name darf maximal 15 Zeichen lang sein![/]");
             return ChooseName();
         }
         
         if (name.Contains(" "))
         {
-            AnsiConsole.Clear();
-            RenderLogo();
+           
+            ConsoleUtils.ClearConsoleLine(2);
             AnsiConsole.MarkupLine("[red]Der Name darf keine Leerzeichen enthalten![/]");
             return ChooseName(); 
         }
 
         return name;
     }
-    
 }

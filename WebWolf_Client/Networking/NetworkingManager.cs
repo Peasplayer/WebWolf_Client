@@ -74,8 +74,8 @@ public class NetworkingManager
                         return;
                     
                     foreach (var playerDataPattern in syncPacketData.Players)
-                    {
-                        PlayerManager.Players[playerDataPattern.ID] = playerDataPattern.Name;
+                    { 
+                        PlayerManager.Players.Add(new PlayerData(playerDataPattern.Name, playerDataPattern.ID));
                     }
                     break;
                 }
