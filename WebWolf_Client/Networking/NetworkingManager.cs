@@ -1,5 +1,7 @@
+using System.Net.WebSockets;
 using Newtonsoft.Json;
-using WebSocketSharp;
+using Websocket.Client;
+using WebSocket = WebSocketSharp.WebSocket;
 
 namespace WebWolf_Client.Networking;
 
@@ -7,8 +9,10 @@ public class NetworkingManager
 {
     public static NetworkingManager Instance;
 
-    private WebSocket Socket;
+    //public WebSocket Socket { get; private set; }
+    public WebsocketClient Client { get; private set; }
 
+    public Task ConnectionTask { get; private set; }
     public NetworkingManager()
     {
         Instance = this;
@@ -16,13 +20,30 @@ public class NetworkingManager
 
     public void StartConnection(string url)
     {
-        Socket = new WebSocket(url);
-        Socket.OnMessage += (sender, e) => 
+        var factory = new Func<ClientWebSocket>(() => new ClientWebSocket
+        {
+            Options =
+            {
+                KeepAliveInterval = TimeSpan.FromSeconds(5),
+            }
+        });
+        Client = new WebsocketClient(new Uri(url), factory);
+        Client.IsReconnectionEnabled = false;
+        Client.ErrorReconnectTimeout = null;
+        Client.ReconnectTimeout = TimeSpan.FromSeconds(5);
+        ConnectionTask = Client.Start();
+        Client.MessageReceived.Subscribe(msg =>
+        {
+            if (msg.MessageType == WebSocketMessageType.Text && msg.Text != null)
+                OnMessage(msg.Text);
+        });
+        /*Socket = new WebSocket(url);
+        Socket.OnMessage += (sender, e) =>
         {
             if (e.IsText)
                 OnMessage(e.Data);
         };
-        Socket.Connect();
+        Socket.ConnectAsync();*/
     }
 
     private void OnMessage(string message)
@@ -41,7 +62,7 @@ public class NetworkingManager
             
             PlayerData.LocalPlayer.SetId(handshake.Name);
             Console.WriteLine("ID: " + PlayerData.LocalPlayer.Id);
-            Socket.Send(JsonConvert.SerializeObject(new HandshakePacket(PlayerData.LocalPlayer.Id, "Laputa")));
+            Client.Send(JsonConvert.SerializeObject(new HandshakePacket(PlayerData.LocalPlayer.Id, PlayerData.LocalPlayer.Name)));
         }
         else
         {
@@ -58,6 +79,12 @@ public class NetworkingManager
                     var joinPacketData = JsonConvert.DeserializeObject<Packets.PlayerDataPattern>(normalPacket.Data);
                     if (joinPacketData == null)
                         return;
+
+                    if (joinPacketData.ID == PlayerData.LocalPlayer.Id)
+                    {
+                        Console.WriteLine("Local player is already joined");
+                        return;
+                    }
                                 
                     Console.WriteLine($"Player {joinPacketData.Name} joined with ID {joinPacketData.ID}");
                     PlayerManager.Players.Add(new PlayerData(joinPacketData.Name, joinPacketData.ID));

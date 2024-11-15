@@ -1,5 +1,7 @@
-﻿using System.Security.Cryptography;
+﻿using System.Reflection;
+using System.Security.Cryptography;
 using Spectre.Console;
+using WebSocketSharp;
 using WebWolf_Client.Networking;
 
 namespace WebWolf_Client;
@@ -8,22 +10,13 @@ class Program
 {
     static void Main(string[] args)
     {
-        RenderLogo();
+        var isConnected = UIHandler.StartGameMenu();
+        if (isConnected)
+        {
+            UIHandler.DisplayLobby();
+        }
         
-        AnsiConsole.WriteLine("");
-        PlayerData.LocalPlayer = new PlayerData(ChooseName(), null);
-        
-        var net = new NetworkingManager();
-        net.StartConnection("ws://localhost:8443/json");
         Console.ReadKey();
-    }
-
-    private static void RenderLogo()
-    {
-        var image = new CanvasImage("C:\\Users\\je446\\Downloads\\Werwolf.jpg");
-        
-        image.MaxWidth(30);
-        AnsiConsole.Write(image);
     }
     
     public static string ChooseName()
