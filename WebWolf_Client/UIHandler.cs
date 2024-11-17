@@ -36,6 +36,8 @@ public class UIHandler
         ConsoleUtils.ClearConsoleLine(2);
         AnsiConsole.MarkupLine("\nHallo, [green]{0}[/]!", PlayerData.LocalPlayer.Name);
         
+        DisplayLobby();
+        
         var net = new NetworkingManager();
         net.StartConnection("ws://localhost:8443/json");
         AnsiConsole.Write("Connecting");
@@ -68,16 +70,19 @@ public class UIHandler
                 {
                     var table = new Table();
                     table.AddColumn("[blue]Name[/]");
-                    table.AddColumn("[blue]ID[/]");
+                    // table.AddColumn("[blue]ID[/]");
                     
                     foreach (var player in PlayerManager.Players)
                     {
-                        table.AddRow(player.Name, player.Id ?? "[grey]Keine ID[/]");
+                        table.AddRow(player.Name);
                     }
                     
-                    table.AddRow($"[bold green]{PlayerData.LocalPlayer.Name}[/]", "[green](You)[/]");
+                    table.AddRow($"[bold green]{PlayerData.LocalPlayer.Name}[/]" + " [green](You)[/]");
                     ctx.UpdateTarget(table);
                 }
             });
+        
+             //Fals in der live preview die ID angezeigt werden soll
+            //player.Id ?? "[grey]Keine ID[/]"
     }
 }
