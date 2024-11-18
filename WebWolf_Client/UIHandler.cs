@@ -3,13 +3,13 @@ using WebWolf_Client.Networking;
 
 namespace WebWolf_Client;
 
-public class UIHandler
+public static class UiHandler
 {
     public static bool StartGameMenu()
     {
-        //Test Spierler
-        PlayerManager.Players.Add(new PlayerData("TestSpieler1", null));
-        PlayerManager.Players.Add(new PlayerData("TestSpieler2", "2"));
+        //Test Spieler
+        PlayerData.Players.Add(new PlayerData("TestSpieler1", null));
+        PlayerData.Players.Add(new PlayerData("TestSpieler2", "2"));
         
         Console.Clear();
         ConsoleUtils.RenderLogo();
@@ -36,18 +36,18 @@ public class UIHandler
         ConsoleUtils.ClearConsoleLine(2);
         AnsiConsole.MarkupLine("\nHallo, [green]{0}[/]!", PlayerData.LocalPlayer.Name);
         
-        DisplayLobby();
-        
         var net = new NetworkingManager();
         net.StartConnection("ws://localhost:8443/json");
-        AnsiConsole.Write("Connecting");
-        while (net.Client.IsStarted && !net.Client.IsRunning)
-        {
-            AnsiConsole.Write(".");
-            if (net.ConnectionTask.Status == TaskStatus.RanToCompletion)
-                break;
-            Thread.Sleep(500);
-        }
+        AnsiConsole.Status()
+            .Spinner(Spinner.Known.Line)
+            .Start("Connecting", ctx => {
+                while (net.Client.IsStarted && !net.Client.IsRunning)
+                {
+                    if (net.ConnectionTask.Status == TaskStatus.RanToCompletion)
+                        break;
+                    Thread.Sleep(500);
+                }
+            });
         
         if (net.Client.IsRunning)
         {
@@ -61,28 +61,27 @@ public class UIHandler
         }
     }
 
-    public static void DisplayLobby()
+    public static void DisplayLobby(bool initial)
     {
-        AnsiConsole.Live(new Markup("[green]Lobby wird geladen...[/]"))
-            .Start(ctx =>
-            {
-                while (true)
-                {
-                    var table = new Table();
-                    table.AddColumn("[blue]Name[/]");
-                    // table.AddColumn("[blue]ID[/]");
+        AnsiConsole.Clear();
+        var table = new Table();
+        table.AddColumn("[blue]Name[/]");
+        //table.AddColumn("[blue]ID[/]");
                     
-                    foreach (var player in PlayerManager.Players)
-                    {
-                        table.AddRow(player.Name);
-                    }
-                    
-                    table.AddRow($"[bold green]{PlayerData.LocalPlayer.Name}[/]" + " [green](You)[/]");
-                    ctx.UpdateTarget(table);
-                }
-            });
+        foreach (var player in PlayerData.Players)
+        {
+            if (player.IsLocal)
+                table.AddRow($"[bold green]{player.Name}[/]" + " [green](You)[/]");
+            else
+                table.AddRow(player.Name);
+        }
         
-             //Fals in der live preview die ID angezeigt werden soll
-            //player.Id ?? "[grey]Keine ID[/]"
+        AnsiConsole.Write(table);
+        AnsiConsole.Write("Spiel Starten? [y/n]");
+        if (initial)
+            AnsiConsole.Prompt(new ConfirmationPrompt("").HideChoices().HideDefaultValue());
+
+        //Fals in der live preview die ID angezeigt werden soll
+        //player.Id ?? "[grey]Keine ID[/]"
     }
 }

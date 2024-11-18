@@ -1,7 +1,6 @@
 using System.Net.WebSockets;
 using Newtonsoft.Json;
 using Websocket.Client;
-using WebSocket = WebSocketSharp.WebSocket;
 
 namespace WebWolf_Client.Networking;
 
@@ -37,6 +36,10 @@ public class NetworkingManager
             if (msg.MessageType == WebSocketMessageType.Text && msg.Text != null)
                 OnMessage(msg.Text);
         });
+        Client.DisconnectionHappened.Subscribe(info =>
+        {
+            // To-Do
+        });
         /*Socket = new WebSocket(url);
         Socket.OnMessage += (sender, e) =>
         {
@@ -48,7 +51,7 @@ public class NetworkingManager
 
     private void OnMessage(string message)
     {
-        Console.WriteLine("Server says: " + message);
+        Program.DebugLog("Server says: " + message);
             
         var packet = JsonConvert.DeserializeObject<Packet>(message);
         if (packet == null)
@@ -61,7 +64,7 @@ public class NetworkingManager
                 return;
             
             PlayerData.LocalPlayer.SetId(handshake.Name);
-            Console.WriteLine("ID: " + PlayerData.LocalPlayer.Id);
+            Program.DebugLog("ID: " + PlayerData.LocalPlayer.Id);
             Client.Send(JsonConvert.SerializeObject(new HandshakePacket(PlayerData.LocalPlayer.Id, PlayerData.LocalPlayer.Name)));
         }
         else
@@ -70,44 +73,69 @@ public class NetworkingManager
             if (normalPacket == null)
                 return;
 
-            switch (normalPacket.DataType)
+            try
             {
-                case PacketDataType.Join:
+                switch (normalPacket.DataType)
                 {
-                    Console.WriteLine("Received Join-packet");
-                                    
-                    var joinPacketData = JsonConvert.DeserializeObject<Packets.PlayerDataPattern>(normalPacket.Data);
-                    if (joinPacketData == null)
-                        return;
-
-                    if (joinPacketData.ID == PlayerData.LocalPlayer.Id)
+                    case PacketDataType.Join:
                     {
-                        Console.WriteLine("Local player is already joined");
-                        return;
+                        Program.DebugLog("Received Join-packet");
+
+                        var joinPacketData =
+                            JsonConvert.DeserializeObject<Packets.PlayerDataPattern>(normalPacket.Data);
+                        if (joinPacketData == null)
+                            return;
+
+                        if (joinPacketData.ID == PlayerData.LocalPlayer.Id)
+                        {
+                            Program.DebugLog("Local player is already joined");
+                            return;
+                        }
+
+                        GameManager.OnPlayerJoin(joinPacketData);
+                        break;
                     }
-                                
-                    Console.WriteLine($"Player {joinPacketData.Name} joined with ID {joinPacketData.ID}");
-                    PlayerManager.Players.Add(new PlayerData(joinPacketData.Name, joinPacketData.ID));
-                    break;
-                }
-                case PacketDataType.SyncLobby:
-                {
-                    PlayerManager.Players.Clear();
-                    var syncPacketData = JsonConvert.DeserializeObject<Packets.SyncLobbyPacket>(normalPacket.Data);
-                    if (syncPacketData == null)
-                        return;
-                    
-                    foreach (var playerDataPattern in syncPacketData.Players)
-                    { 
-                        PlayerManager.Players.Add(new PlayerData(playerDataPattern.Name, playerDataPattern.ID));
+                    case PacketDataType.SyncLobby:
+                    {
+                        PlayerData.Players.Clear();
+                        var syncPacketData = JsonConvert.DeserializeObject<Packets.SyncLobbyPacket>(normalPacket.Data);
+                        if (syncPacketData == null)
+                            return;
+
+                        foreach (var playerDataPattern in syncPacketData.Players)
+                        {
+                            PlayerData.Players.Add(new PlayerData(playerDataPattern.Name, playerDataPattern.ID));
+                        }
+
+                        break;
                     }
-                    break;
+                    case PacketDataType.Leave:
+                    {
+                        Program.DebugLog("Received Leave-packet");
+
+                        var packetData = JsonConvert.DeserializeObject<Packets.PlayerDataPattern>(normalPacket.Data);
+                        if (packetData == null)
+                            return;
+
+                        if (packetData.ID == PlayerData.LocalPlayer.Id)
+                        {
+                            Program.DebugLog("Local player can't leave!!!");
+                            return;
+                        }
+
+                        GameManager.OnPlayerLeave(packetData);
+                        break;
+                    }
+                    default:
+                    {
+                        Program.DebugLog("Data: " + normalPacket.Data);
+                        break;
+                    }
                 }
-                default:
-                {
-                    Console.WriteLine("Data: " + normalPacket.Data);
-                    break;
-                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
             }
         }
     }
