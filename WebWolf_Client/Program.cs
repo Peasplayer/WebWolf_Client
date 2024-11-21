@@ -16,6 +16,10 @@ class Program
         }
         
         Console.ReadKey();
+        if (NetworkingManager.Instance.Client.IsRunning)
+        {
+            NetworkingManager.Instance.Client.Stop(WebSocketCloseStatus.NormalClosure, "Programm ended");
+        }
     }
 
     public static void DebugLog(string log)
