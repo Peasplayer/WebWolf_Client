@@ -137,7 +137,7 @@ public class NetworkingManager
                         
                         PlayerData.GetPlayer(packetData.Id).SetHost();
                         if (GameManager.State == GameManager.GameState.InLobby)
-                            UiHandler.DisplayLobby();
+                            Task.Run(UiHandler.DisplayLobby);
                         break;
                     }
                     default:
@@ -149,7 +149,7 @@ public class NetworkingManager
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
+                Program.DebugLog($"Unhandled Exception: {e}");
             }
         }
     }
