@@ -1,4 +1,6 @@
 ﻿using System.Diagnostics;
+using System.Net.WebSockets;
+using WebWolf_Client.Networking;
 
 namespace WebWolf_Client;
 
@@ -10,7 +12,7 @@ class Program
         if (isConnected)
         {
             GameManager.ChangeState(GameManager.GameState.InLobby);
-            UiHandler.DisplayLobby(true);
+            UiHandler.DisplayLobby();
         }
         
         Console.ReadKey();

@@ -8,7 +8,8 @@ public class NetworkingManager
 {
     public static NetworkingManager Instance;
 
-    //public WebSocket Socket { get; private set; }
+    public static string InitialName;
+    public string CurrentId { get; private set; }
     public WebsocketClient Client { get; private set; }
 
     public Task ConnectionTask { get; private set; }
@@ -63,9 +64,9 @@ public class NetworkingManager
             if (handshake == null)
                 return;
             
-            PlayerData.LocalPlayer.SetId(handshake.Name);
-            Program.DebugLog("ID: " + PlayerData.LocalPlayer.Id);
-            Client.Send(JsonConvert.SerializeObject(new HandshakePacket(PlayerData.LocalPlayer.Id, PlayerData.LocalPlayer.Name)));
+            CurrentId = handshake.Name;
+            Program.DebugLog("ID: " + CurrentId);
+            Client.Send(JsonConvert.SerializeObject(new HandshakePacket(CurrentId, InitialName)));
         }
         else
         {
@@ -86,7 +87,7 @@ public class NetworkingManager
                         if (joinPacketData == null)
                             return;
 
-                        if (joinPacketData.ID == PlayerData.LocalPlayer.Id)
+                        if (joinPacketData.Id == PlayerData.LocalPlayer.Id)
                         {
                             Program.DebugLog("Local player is already joined");
                             return;
@@ -104,7 +105,7 @@ public class NetworkingManager
 
                         foreach (var playerDataPattern in syncPacketData.Players)
                         {
-                            PlayerData.Players.Add(new PlayerData(playerDataPattern.Name, playerDataPattern.ID));
+                            PlayerData.Players.Add(new PlayerData(playerDataPattern.Name, playerDataPattern.Id, playerDataPattern.IsHost));
                         }
 
                         break;
@@ -117,13 +118,26 @@ public class NetworkingManager
                         if (packetData == null)
                             return;
 
-                        if (packetData.ID == PlayerData.LocalPlayer.Id)
+                        if (packetData.Id == PlayerData.LocalPlayer.Id)
                         {
                             Program.DebugLog("Local player can't leave!!!");
                             return;
                         }
 
                         GameManager.OnPlayerLeave(packetData);
+                        break;
+                    }
+                    case PacketDataType.SetHost:
+                    {
+                        Program.DebugLog("Received SetHost-packet");
+
+                        var packetData = JsonConvert.DeserializeObject<Packets.PlayerDataPattern>(normalPacket.Data);
+                        if (packetData == null)
+                            return;
+                        
+                        PlayerData.GetPlayer(packetData.Id).SetHost();
+                        if (GameManager.State == GameManager.GameState.InLobby)
+                            UiHandler.DisplayLobby();
                         break;
                     }
                     default:

@@ -4,5 +4,6 @@ public enum PacketDataType : uint
 {
     Join = 0,
     Leave = 1,
-    SyncLobby = 2
+    SyncLobby = 2,
+    SetHost = 3
 }

@@ -9,27 +9,31 @@ public class GameManager
     public static void ChangeState(GameState newState)
     {
         State = newState;
+        if (newState == GameState.InLobby)
+        {
+            UiHandler.ResetLobby();
+        }
     }
 
     public static void OnPlayerJoin(Packets.PlayerDataPattern data)
     {
-        Program.DebugLog($"Player {data.Name} joined with ID {data.ID}");
-        PlayerData.Players.Add(new PlayerData(data.Name, data.ID));
+        Program.DebugLog($"Player {data.Name} joined with ID {data.Id}");
+        PlayerData.Players.Add(new PlayerData(data.Name, data.Id));
 
         if (GameManager.State == GameState.InLobby)
         {
-            UiHandler.DisplayLobby(false);
+            UiHandler.DisplayLobby();
         }
     }
     
     public static void OnPlayerLeave(Packets.PlayerDataPattern data)
     {
-        Program.DebugLog($"Player {data.Name} left with ID {data.ID}");
-        PlayerData.Players.Remove(PlayerData.GetPlayer(data.ID));
+        Program.DebugLog($"Player {data.Name} left with ID {data.Id}");
+        PlayerData.Players.Remove(PlayerData.GetPlayer(data.Id));
 
         if (GameManager.State == GameState.InLobby)
         {
-            UiHandler.DisplayLobby(false);
+            UiHandler.DisplayLobby();
         }
     }
     

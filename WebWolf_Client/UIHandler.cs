@@ -15,7 +15,7 @@ public static class UiHandler
         ConsoleUtils.RenderLogo();
         
         AnsiConsole.WriteLine("");
-        PlayerData.LocalPlayer = new PlayerData(AnsiConsole.Prompt(
+        NetworkingManager.InitialName = AnsiConsole.Prompt(
             new TextPrompt<string>("Wie möchtest du im Spiel heißen?")
                 .Validate(n =>
                 {
@@ -32,9 +32,9 @@ public static class UiHandler
                     }
                     
                     return ValidationResult.Success();
-                })), null);
+                }));
         ConsoleUtils.ClearConsoleLine(2);
-        AnsiConsole.MarkupLine("\nHallo, [green]{0}[/]!", PlayerData.LocalPlayer.Name);
+        AnsiConsole.MarkupLine("\nHallo, [green]{0}[/]!", NetworkingManager.InitialName);
         
         var net = new NetworkingManager();
         net.StartConnection("ws://localhost:8443/json");
@@ -61,7 +61,14 @@ public static class UiHandler
         }
     }
 
-    public static void DisplayLobby(bool initial)
+    private static bool _AskedQuestion;
+
+    public static void ResetLobby()
+    {
+        _AskedQuestion = false;
+    }
+    
+    public static void DisplayLobby()
     {
         AnsiConsole.Clear();
         var table = new Table();
@@ -70,16 +77,26 @@ public static class UiHandler
                     
         foreach (var player in PlayerData.Players)
         {
-            if (player.IsLocal)
-                table.AddRow($"[bold green]{player.Name}[/]" + " [green](You)[/]");
-            else
-                table.AddRow(player.Name);
+            table.AddRow($"{(player.IsLocal ? "[bold green]" : "[white]")}{player.Name}" +
+                         $"{(player.IsLocal ? " (Du)" : "")}[/]{(player.IsHost ? " (Host)" : "")}");
         }
         
         AnsiConsole.Write(table);
-        AnsiConsole.Write("Spiel Starten? [y/n]");
-        if (initial)
-            AnsiConsole.Prompt(new ConfirmationPrompt("").HideChoices().HideDefaultValue());
+        if (PlayerData.LocalPlayer.IsHost)
+        {
+            AnsiConsole.Write("Spiel Starten? [y/n]");
+            if (!_AskedQuestion)
+            {
+                _AskedQuestion = true;
+                var prompt = new ConfirmationPrompt("");
+                prompt.HideChoices().HideDefaultValue();
+                prompt.DefaultValue = true;
+                Program.DebugLog("Asking for start..." + _AskedQuestion);
+                Program.DebugLog("Start? " + AnsiConsole.Prompt(prompt));
+            }
+            else
+                AnsiConsole.Write(" ");
+        }
 
         //Fals in der live preview die ID angezeigt werden soll
         //player.Id ?? "[grey]Keine ID[/]"

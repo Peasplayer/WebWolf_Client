@@ -14,13 +14,15 @@ public class Packets
     
     public class PlayerDataPattern
     {
-        public string ID { get; }
+        public string Id { get; }
         public string Name { get; }
+        public bool IsHost { get; }
 
-        public PlayerDataPattern(string id, string name)
+        public PlayerDataPattern(string id, string name, bool isHost)
         {
-            ID = id;
+            Id = id;
             Name = name;
+            IsHost = isHost;
         }
     }
 }
