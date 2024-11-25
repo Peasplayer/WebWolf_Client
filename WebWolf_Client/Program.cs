@@ -16,8 +16,10 @@ class Program
         if (isConnected)
         {
             KeepAlive = true;
-            NetworkingManager.InitialConnectionSuccessful = true;
+            NetworkingManager.Instance.InitialConnectionSuccessful = true;
             GameManager.ChangeState(GameManager.GameState.InLobby);
+            // Lobby wird erst angezeigt, wenn die Spieler mit dem Client synchronisiert sind
+            while(!NetworkingManager.Instance.ArePlayersSynced) {}
             UiHandler.DisplayLobby();
         }
         else
@@ -37,8 +39,9 @@ class Program
         }
     }
 
+    // Schreibt eine Debug-Nachricht in eine Log-Datei die zu dem aktuellen Programm gehört
     public static void DebugLog(string log)
     {
-        File.AppendAllText("./debug.log", $"[{DateTime.Now}] [{Process.GetCurrentProcess().Id}] {log}\n");
+        File.AppendAllText($"$./debug-{Process.GetCurrentProcess().Id}.log", $"[{DateTime.Now}] {log}\n");
     }
 }

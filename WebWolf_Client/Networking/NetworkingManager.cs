@@ -9,11 +9,12 @@ public class NetworkingManager
     public static NetworkingManager Instance;
 
     public static string InitialName;
-    public static bool InitialConnectionSuccessful;
     
     public string CurrentId { get; private set; }
     public WebsocketClient Client { get; private set; }
     public Task ConnectionTask { get; private set; }
+    public bool InitialConnectionSuccessful;
+    public bool ArePlayersSynced { get; private set; }
     public NetworkingManager()
     {
         Instance = this;
@@ -108,6 +109,9 @@ public class NetworkingManager
                         {
                             PlayerData.Players.Add(new PlayerData(playerDataPattern.Name, playerDataPattern.Id, playerDataPattern.IsHost));
                         }
+                        
+                        Program.DebugLog("Players after sync: " + JsonConvert.SerializeObject(PlayerData.Players));
+                        ArePlayersSynced = true;
 
                         break;
                     }
