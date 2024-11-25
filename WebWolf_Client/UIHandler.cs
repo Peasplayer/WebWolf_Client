@@ -69,9 +69,10 @@ public static class UiHandler
         }
         
         AnsiConsole.Write(table);
-        if (PlayerData.LocalPlayer.IsHost)
+        // Wenn der Spieler der Host ist und 5 Spieler vorhanden sind, kann er das Spiel starten
+        if (PlayerData.LocalPlayer.IsHost && PlayerData.Players.Count >= 5)
         {
-            AnsiConsole.Write("Spiel Starten? [y/n]");
+            AnsiConsole.Write("Drücke ENTER um das Spiel zu starten!");
             if (!_AskedQuestion)
             {
                 _AskedQuestion = true;
@@ -79,7 +80,9 @@ public static class UiHandler
                 prompt.HideChoices().HideDefaultValue();
                 prompt.DefaultValue = true;
                 Program.DebugLog("Asking for start..." + _AskedQuestion);
-                Program.DebugLog("Start? " + UiHandler.Prompt(prompt));
+                var result = UiHandler.Prompt(prompt);
+                Program.DebugLog("Start? " + result);
+                
             }
             else
                 AnsiConsole.Write(" ");
