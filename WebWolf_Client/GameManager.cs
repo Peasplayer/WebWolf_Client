@@ -1,4 +1,5 @@
 using WebWolf_Client.Networking;
+using WebWolf_Client.Roles;
 
 namespace WebWolf_Client;
 
@@ -12,6 +13,10 @@ public class GameManager
         if (newState == GameState.InLobby)
         {
             UiHandler.ResetLobby();
+        }
+        else if (newState == GameState.InGame)
+        {
+            RoleManager.AssignRoles();
         }
     }
 

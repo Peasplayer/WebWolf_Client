@@ -40,7 +40,7 @@ public static class UiHandler
         AnsiConsole.MarkupLine("\nHallo, [green]{0}[/]!", NetworkingManager.InitialName);
         
         var net = new NetworkingManager();
-        net.StartConnection("ws://localhost:8443/json");
+        net.StartConnection("ws://10.1.103.55:8443");
         AnsiConsole.Status()
             .Spinner(Spinner.Known.Line)
             .StartAsync("Connecting", _ => net.ConnectionTask.WaitAsync(CancellationToken.None)).Wait();
