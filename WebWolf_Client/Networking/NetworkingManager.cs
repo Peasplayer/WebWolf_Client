@@ -9,9 +9,10 @@ public class NetworkingManager
     public static NetworkingManager Instance;
 
     public static string InitialName;
+    public static bool InitialConnectionSuccessful;
+    
     public string CurrentId { get; private set; }
     public WebsocketClient Client { get; private set; }
-
     public Task ConnectionTask { get; private set; }
     public NetworkingManager()
     {
@@ -39,15 +40,15 @@ public class NetworkingManager
         });
         Client.DisconnectionHappened.Subscribe(info =>
         {
-            // To-Do
+            if (!InitialConnectionSuccessful)
+                return;
+            
+            Program.DebugLog("Connection closed: " + info.Type);
+            
+            UiHandler.DisplayDisconnectionScreen(info);
+
+            Program.KeepAlive = false;
         });
-        /*Socket = new WebSocket(url);
-        Socket.OnMessage += (sender, e) =>
-        {
-            if (e.IsText)
-                OnMessage(e.Data);
-        };
-        Socket.ConnectAsync();*/
     }
 
     private void OnMessage(string message)

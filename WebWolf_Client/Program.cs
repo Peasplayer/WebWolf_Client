@@ -1,23 +1,34 @@
 ﻿using System.Diagnostics;
 using System.Net.WebSockets;
+using Websocket.Client;
 using WebWolf_Client.Networking;
 
 namespace WebWolf_Client;
 
 class Program
 {
+    public static bool KeepAlive;
+    
     static void Main(string[] args)
     {
         AppDomain.CurrentDomain.UnhandledException += (sender, eventArgs) => DebugLog($"Unhandled Exception: {eventArgs.ExceptionObject}");
         var isConnected = UiHandler.StartGameMenu();
         if (isConnected)
         {
+            KeepAlive = true;
+            NetworkingManager.InitialConnectionSuccessful = true;
             GameManager.ChangeState(GameManager.GameState.InLobby);
             UiHandler.DisplayLobby();
         }
+        else
+        {
+            UiHandler.DisplayDisconnectionScreen(new DisconnectionInfo(DisconnectionType.Error, 
+                WebSocketCloseStatus.EndpointUnavailable, "Connection failed", 
+                null, null));
+        }
 
-        while (NetworkingManager.Instance.Client.IsRunning) ;
-        
+        while (KeepAlive) { }
+
         DebugLog("PROGRAM ENDED");
         Console.ReadKey();
         if (NetworkingManager.Instance.Client.IsRunning)
