@@ -145,6 +145,13 @@ public class NetworkingManager
                             Task.Run(UiHandler.DisplayLobby);
                         break;
                     }
+                    // Das Spiel wird vom Host gestartet
+                    case PacketDataType.StartGame:
+                    {
+                        Program.DebugLog("Received StartGame-packet");
+                        GameManager.ChangeState(GameManager.GameState.InGame);
+                        break;
+                    }
                     default:
                     {
                         Program.DebugLog("Data: " + normalPacket.Data);

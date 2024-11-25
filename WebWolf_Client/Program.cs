@@ -42,6 +42,6 @@ class Program
     // Schreibt eine Debug-Nachricht in eine Log-Datei die zu dem aktuellen Programm gehört
     public static void DebugLog(string log)
     {
-        File.AppendAllText($"$./debug-{Process.GetCurrentProcess().Id}.log", $"[{DateTime.Now}] {log}\n");
+        File.AppendAllText($"./debug-{Process.GetCurrentProcess().Id}.log", $"[{DateTime.Now}] {log}\n");
     }
 }

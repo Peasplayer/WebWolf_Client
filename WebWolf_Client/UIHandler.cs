@@ -1,5 +1,5 @@
-﻿using System.Net.WebSockets;
-using System.Reflection;
+﻿using System.Reflection;
+using Newtonsoft.Json;
 using Spectre.Console;
 using Websocket.Client;
 using WebWolf_Client.Networking;
@@ -83,6 +83,15 @@ public static class UiHandler
                 var result = UiHandler.Prompt(prompt);
                 Program.DebugLog("Start? " + result);
                 
+                if (!result)
+                {
+                    _AskedQuestion = false;
+                    DisplayLobby();
+                    return;
+                }
+                
+                NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
+                    new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.StartGame, "")));
             }
             else
                 AnsiConsole.Write(" ");
