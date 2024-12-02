@@ -1,3 +1,4 @@
+using Newtonsoft.Json;
 using WebWolf_Client.Networking;
 using WebWolf_Client.Roles;
 
@@ -16,7 +17,7 @@ public class PlayerData
     public string Name { get; }
     public string? Id { get; private set; }
     public bool IsHost { get; private set; }
-    public RoleType Role { get; set; }
+    public RoleType Role { get; private set; }
     public bool IsLocal => LocalPlayer.Id == Id;
 
     public PlayerData(string name, string? id, bool isHost = false, RoleType role = RoleType.NoRole)
@@ -41,5 +42,18 @@ public class PlayerData
         }
 
         IsHost = true;
+    }
+
+    public void RpcSetRole(RoleType role)
+    {
+        NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
+            new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.SetRole, 
+                "{'Id': '" + Id + "', 'Role': '" + role + "'}")));
+        SetRole(role);
+    }
+
+    public void SetRole(RoleType role)
+    {
+        Role = role;
     }
 }

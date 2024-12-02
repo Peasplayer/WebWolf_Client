@@ -7,10 +7,18 @@ namespace WebWolf_Client;
 
 class Program
 {
+    public const string URL = "ws://77.90.17.73:8443";
+
+    public static List<string> DebugNames = new List<string>()
+        { "Horst", "Dieter", "Wilfred", "Lennox", "Jannis", "Dreschner", "Martinez", "Benutzer", "Helmut", "Günther", "Tom" };
+    
     public static bool KeepAlive;
     
     static void Main(string[] args)
     {
+        
+        // Zum Debuggen, so können die Logs zugeordnet werden
+        Console.Title = $"WebWolf Client ({Process.GetCurrentProcess().Id})";
         AppDomain.CurrentDomain.UnhandledException += (sender, eventArgs) => DebugLog($"Unhandled Exception: {eventArgs.ExceptionObject}");
         var isConnected = UiHandler.StartGameMenu();
         if (isConnected)
@@ -18,9 +26,6 @@ class Program
             KeepAlive = true;
             NetworkingManager.Instance.InitialConnectionSuccessful = true;
             GameManager.ChangeState(GameManager.GameState.InLobby);
-            // Lobby wird erst angezeigt, wenn die Spieler mit dem Client synchronisiert sind
-            while(!NetworkingManager.Instance.ArePlayersSynced) {}
-            UiHandler.DisplayLobby();
         }
         else
         {

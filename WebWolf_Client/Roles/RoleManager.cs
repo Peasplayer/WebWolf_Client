@@ -2,6 +2,16 @@
 
 public class RoleManager
 {
+    public static List<Role> Roles { get; set; } = new List<Role>()
+    {
+        new Seherin()
+    };
+
+    public static Role GetRole(RoleType roleType)
+    {
+        return Roles.First(x => x.RoleType == roleType);
+    }
+    
     public static List<PlayerData> GetPlayersWithRole(RoleType role)
     {
         var list = new List<PlayerData>();
@@ -25,10 +35,10 @@ public class RoleManager
             for (int i = 0; i < roleSetting.MaxAmount; i++)
             {
                 if (availablePlayers.Count == 0)
-                    return;
+                    continue;
 
                 int randomIndex = random.Next(availablePlayers.Count);
-                availablePlayers[randomIndex].Role = roleSetting.Role;
+                availablePlayers[randomIndex].RpcSetRole(roleSetting.Role);
                 availablePlayers.RemoveAt(randomIndex);
             }
             
@@ -36,7 +46,7 @@ public class RoleManager
 
         foreach (var player in availablePlayers)
         {
-            player.Role = RoleType.Dorfbewohner;
+            player.RpcSetRole(RoleType.Dorfbewohner);
         }
         
         foreach (var player in PlayerData.Players)

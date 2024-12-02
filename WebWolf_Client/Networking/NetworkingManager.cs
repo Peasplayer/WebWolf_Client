@@ -1,6 +1,7 @@
 using System.Net.WebSockets;
 using Newtonsoft.Json;
 using Websocket.Client;
+using WebWolf_Client.Roles;
 
 namespace WebWolf_Client.Networking;
 
@@ -112,6 +113,8 @@ public class NetworkingManager
                         
                         Program.DebugLog("Players after sync: " + JsonConvert.SerializeObject(PlayerData.Players));
                         ArePlayersSynced = true;
+                        if (GameManager.State == GameManager.GameState.InLobby)
+                            Task.Run(UiHandler.DisplayLobby);
 
                         break;
                     }
@@ -149,7 +152,55 @@ public class NetworkingManager
                     case PacketDataType.StartGame:
                     {
                         Program.DebugLog("Received StartGame-packet");
-                        GameManager.ChangeState(GameManager.GameState.InGame);
+                        Task.Run(() => GameManager.ChangeState(GameManager.GameState.InGame));
+                        break;
+                    }
+                    case PacketDataType.SetRole:
+                    {
+                        Program.DebugLog("Received SetRole-packet");
+                        var data = JsonConvert.DeserializeObject<Packets.SetRolePattern>(normalPacket.Data);
+                        PlayerData.GetPlayer(data.Id).SetRole(data.Role);
+                        Program.DebugLog($"Player {PlayerData.GetPlayer(data.Id).Name} is a {data.Role}");
+                        break;
+                    }
+                    case PacketDataType.StartNightOrDay:
+                    {
+                        Program.DebugLog("Received StartNightOrDay-packet");
+                        var data = JsonConvert.DeserializeObject<Packets.SimpleBoolean>(normalPacket.Data);
+                        Program.DebugLog($"It is now {(data.Value ? "Night" : "Day")}");
+                        GameManager.ChangeInGameState(data.Value ? GameManager.InGameStateType.Night : GameManager.InGameStateType.Day);
+                        break;
+                    }
+                    case PacketDataType.CallRole:
+                    {
+                        Program.DebugLog("Received CallRole-packet");
+                        var data = JsonConvert.DeserializeObject<Packets.SimpleRole>(normalPacket.Data);
+                        Program.DebugLog($"Role {data.Role} is being called");
+                        if (PlayerData.LocalPlayer.Role == data.Role)
+                        {
+                            Task.Run(RoleManager.GetRole(data.Role).PrepareAction);
+                        }
+                        break;
+                    }
+                    case PacketDataType.RoleFinished:
+                    {
+                        Program.DebugLog("Received RoleFinished-packet");
+                        var data = JsonConvert.DeserializeObject<Packets.SimpleRole>(normalPacket.Data);
+                        Program.DebugLog($"{normalPacket.Sender} finished role {data.Role}");
+                        GameManager.WaitingForRole.Remove(normalPacket.Sender);
+                        break;
+                    }
+                    case PacketDataType.RoleCanceled:
+                    {
+                        Program.DebugLog("Received RoleCanceled-packet");
+                        var data = JsonConvert.DeserializeObject<Packets.SimpleRole>(normalPacket.Data);
+                        Program.DebugLog($"{data.Role}'s action was canceled");
+                        if (PlayerData.LocalPlayer.Role == data.Role)
+                        {
+                            UiHandler.CancelPrompt();
+                            RoleManager.GetRole(data.Role).IsActionCancelled = true;
+                            UiHandler.DisplayInGameMenu();
+                        }
                         break;
                     }
                     default:

@@ -1,3 +1,5 @@
+using WebWolf_Client.Roles;
+
 namespace WebWolf_Client.Networking;
 
 public class Packets
@@ -23,6 +25,38 @@ public class Packets
             Id = id;
             Name = name;
             IsHost = isHost;
+        }
+    }
+    
+    public class SetRolePattern
+    {
+        public string Id { get; }
+        public RoleType Role { get; }
+
+        public SetRolePattern(string id, RoleType role)
+        {
+            Id = id;
+            Role = role;
+        }
+    }
+    
+    public class SimpleBoolean
+    {
+        public bool Value { get; }
+
+        public SimpleBoolean(bool value)
+        {
+            Value = value;
+        }
+    }
+    
+    public class SimpleRole
+    {
+        public RoleType Role { get; }
+
+        public SimpleRole(RoleType role)
+        {
+            Role = role;
         }
     }
 }
