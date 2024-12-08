@@ -1,5 +1,6 @@
 ﻿using System.Drawing;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 using Spectre.Console;
 using Websocket.Client;
@@ -212,7 +213,7 @@ public static class UiHandler
                 deltaX = - maxWidth/2;
         
             AnsiConsole.Console.Cursor.SetPosition((int) Math.Round(centerX + deltaX, MidpointRounding.AwayFromZero) -
-                                                   (text.Length / 2), (int) Math.Ceiling(centerY - deltaY));
+                                                   Regex.Replace(text,  @"\[[^\]]+\]", "").Length / 2, (int) Math.Ceiling(centerY - deltaY));
             AnsiConsole.Markup(text);
         }
         return new Point((int) Math.Round(centerX, MidpointRounding.AwayFromZero), (int) Math.Round(centerY, MidpointRounding.AwayFromZero));

@@ -9,7 +9,7 @@ public class GameManager
     public static GameState State { get; private set; } = GameState.NoGame;
     public static InGameStateType InGameState { get; private set; } = InGameStateType.NoGame;
     
-    public static List<string> WaitingForRole { get; } = new List<string>();
+    public static Dictionary<string, int> WaitingForRole { get; } = new Dictionary<string, int>();
 
     public static void ChangeState(GameState newState)
     {
@@ -63,11 +63,6 @@ public class GameManager
         var center = UiHandler.DrawPlayerNameCircle();
         UiHandler.RenderTextAroundPoint(center, "Nach einem anstrengenden Umzug nach Düsterwald\nfallt ihr alle müde in eure Betten.\nUnd die erste Nacht beginnt...");
         Task.Delay(1000).Wait();
-
-        if (PlayerData.LocalPlayer.IsHost)
-            StartNightOrDay(true);
-        
-        UiHandler.DisplayInGameMenu();
         
         if (PlayerData.LocalPlayer.IsHost)
         {
@@ -89,7 +84,7 @@ public class GameManager
         foreach (var playerData in PlayerData.Players)
         {
             if (playerData.Role == role)
-                WaitingForRole.Add(playerData.Id);
+                WaitingForRole.Add(playerData.Id, 0);
         }
 
         NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
@@ -100,12 +95,19 @@ public class GameManager
         {
             if (timer.IsCompleted)
             {
-                NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
-                    new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.RoleCanceled, JsonConvert.SerializeObject(new Packets.SimpleRole(role)))));
+                foreach (var player in WaitingForRole)
+                {
+                    if (player.Value == 0)
+                        NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
+                            new SendToPacket(NetworkingManager.Instance.CurrentId, PacketDataType.RoleCanceled, JsonConvert.SerializeObject(new Packets.SimpleRole(role)), player.Key)));
+                }
                 break;
             }
         }
         
+        while (WaitingForRole.Count > 0){}
+        Console.WriteLine("Bazinga!");
+        Program.DebugLog("Bazinga!");
     }
     
     public enum GameState

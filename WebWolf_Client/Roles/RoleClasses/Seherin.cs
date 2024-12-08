@@ -31,6 +31,10 @@ public class Seherin : Role
                 .PageSize(10)
                 .AddChoices(PlayerData.Players.ConvertAll(player => player.Name)));
         if (IsActionCancelled) return;
+        Program.DebugLog("IsCancelled? " + IsActionCancelled);
+        NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
+            new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.RoleFinished, JsonConvert.SerializeObject(new Packets.SimpleRole(RoleType.Seherin)))));
+        if (IsActionCancelled) return;
         
         var player = PlayerData.Players.FirstOrDefault(p => p.Name == playerName);
         if (IsActionCancelled) return;

@@ -169,6 +169,8 @@ public class NetworkingManager
                         var data = JsonConvert.DeserializeObject<Packets.SimpleBoolean>(normalPacket.Data);
                         Program.DebugLog($"It is now {(data.Value ? "Night" : "Day")}");
                         GameManager.ChangeInGameState(data.Value ? GameManager.InGameStateType.Night : GameManager.InGameStateType.Day);
+        
+                        UiHandler.DisplayInGameMenu();
                         break;
                     }
                     case PacketDataType.CallRole:
@@ -186,8 +188,17 @@ public class NetworkingManager
                     {
                         Program.DebugLog("Received RoleFinished-packet");
                         var data = JsonConvert.DeserializeObject<Packets.SimpleRole>(normalPacket.Data);
-                        Program.DebugLog($"{normalPacket.Sender} finished role {data.Role}");
-                        GameManager.WaitingForRole.Remove(normalPacket.Sender);
+                        var currentWaitState = GameManager.WaitingForRole[normalPacket.Sender];
+                        if (currentWaitState == 0)
+                        {
+                            Program.DebugLog($"{normalPacket.Sender} completed role {data.Role} action (no UI)");
+                            GameManager.WaitingForRole[normalPacket.Sender] = 1;
+                        }
+                        else
+                        {
+                            Program.DebugLog($"{normalPacket.Sender} finished role {data.Role}");
+                            GameManager.WaitingForRole.Remove(normalPacket.Sender);
+                        }
                         break;
                     }
                     case PacketDataType.RoleCanceled:
@@ -197,8 +208,8 @@ public class NetworkingManager
                         Program.DebugLog($"{data.Role}'s action was canceled");
                         if (PlayerData.LocalPlayer.Role == data.Role)
                         {
-                            UiHandler.CancelPrompt();
                             RoleManager.GetRole(data.Role).IsActionCancelled = true;
+                            UiHandler.CancelPrompt();
                             UiHandler.DisplayInGameMenu();
                         }
                         break;
