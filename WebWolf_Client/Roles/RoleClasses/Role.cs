@@ -1,4 +1,4 @@
-﻿namespace WebWolf_Client.Roles;
+﻿namespace WebWolf_Client.Roles.RoleClasses;
 
 public abstract class Role
 {
@@ -8,13 +8,27 @@ public abstract class Role
 
     public abstract RoleType AfterRole { get; }
     
-    public bool IsActionCancelled { get; set; }
+    public bool IsActionCancelled { get; private set; }
 
+    public void PrepareCancelAction()
+    {
+        IsActionCancelled = true;
+        if (PlayerData.LocalPlayer.Role == RoleType)
+            CancelAction();
+    }
+
+    protected virtual void CancelAction()
+    {
+        UiHandler.DisplayInGameMenu();
+    }
+    
+    public virtual void AfterCancel() { }
+    
     public void PrepareAction()
     {
         IsActionCancelled = false;
         StartAction();
     }
-    
-    public abstract void StartAction();
+
+    protected abstract void StartAction();
 }

@@ -11,5 +11,8 @@ public enum PacketDataType : uint
     StartNightOrDay,
     CallRole,
     RoleFinished,
-    RoleCanceled
+    RoleCanceled,
+    WerwolfVote,
+    WerwolfAnnounceVictim,
+    PlayerDies
 }

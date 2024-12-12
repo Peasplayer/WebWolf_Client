@@ -59,4 +59,14 @@ public class Packets
             Role = role;
         }
     }
+    
+    public class SimplePlayerId
+    {
+        public string Id { get; }
+
+        public SimplePlayerId(string id)
+        {
+            Id = id;
+        }
+    }
 }

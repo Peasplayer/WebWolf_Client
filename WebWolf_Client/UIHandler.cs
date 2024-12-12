@@ -253,7 +253,7 @@ public static class UiHandler
 
     public static Point DrawPlayerNameCircle()
     {
-        return DrawCircle(PlayerData.Players.ConvertAll(player => player.Name + (player.IsLocal ? " [green](Du)[/]" : "")));
+        return DrawCircle(PlayerData.Players.ConvertAll(player => player.Name + (player.IsLocal ? " [green](Du)[/]" : "") + (!player.IsAlive ? " [red](Tot)[/]" : "")));
     }
 
     public static void DisplayInGameMenu()

@@ -19,6 +19,7 @@ public class PlayerData
     public bool IsHost { get; private set; }
     public RoleType Role { get; private set; }
     public bool IsLocal => LocalPlayer.Id == Id;
+    public bool IsAlive = true;
 
     public PlayerData(string name, string? id, bool isHost = false, RoleType role = RoleType.NoRole)
     {

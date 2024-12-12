@@ -2,6 +2,7 @@ using System.Net.WebSockets;
 using Newtonsoft.Json;
 using Websocket.Client;
 using WebWolf_Client.Roles;
+using WebWolf_Client.Roles.RoleClasses;
 
 namespace WebWolf_Client.Networking;
 
@@ -96,7 +97,7 @@ public class NetworkingManager
                             return;
                         }
 
-                        GameManager.OnPlayerJoin(joinPacketData);
+                        Task.Run(() => GameManager.OnPlayerJoin(joinPacketData));
                         break;
                     }
                     case PacketDataType.SyncLobby:
@@ -168,9 +169,7 @@ public class NetworkingManager
                         Program.DebugLog("Received StartNightOrDay-packet");
                         var data = JsonConvert.DeserializeObject<Packets.SimpleBoolean>(normalPacket.Data);
                         Program.DebugLog($"It is now {(data.Value ? "Night" : "Day")}");
-                        GameManager.ChangeInGameState(data.Value ? GameManager.InGameStateType.Night : GameManager.InGameStateType.Day);
-        
-                        UiHandler.DisplayInGameMenu();
+                        Task.Run(() => GameManager.ChangeInGameState(data.Value ? GameManager.InGameStateType.Night : GameManager.InGameStateType.Day));
                         break;
                     }
                     case PacketDataType.CallRole:
@@ -187,17 +186,20 @@ public class NetworkingManager
                     case PacketDataType.RoleFinished:
                     {
                         Program.DebugLog("Received RoleFinished-packet");
+                        if (!PlayerData.LocalPlayer.IsHost)
+                            return;
+                        
                         var data = JsonConvert.DeserializeObject<Packets.SimpleRole>(normalPacket.Data);
-                        var currentWaitState = GameManager.WaitingForRole[normalPacket.Sender];
+                        var currentWaitState = RoleManager.WaitingForRole[normalPacket.Sender];
                         if (currentWaitState == 0)
                         {
                             Program.DebugLog($"{normalPacket.Sender} completed role {data.Role} action (no UI)");
-                            GameManager.WaitingForRole[normalPacket.Sender] = 1;
+                            RoleManager.WaitingForRole[normalPacket.Sender] = 1;
                         }
                         else
                         {
                             Program.DebugLog($"{normalPacket.Sender} finished role {data.Role}");
-                            GameManager.WaitingForRole.Remove(normalPacket.Sender);
+                            RoleManager.WaitingForRole.Remove(normalPacket.Sender);
                         }
                         break;
                     }
@@ -206,12 +208,40 @@ public class NetworkingManager
                         Program.DebugLog("Received RoleCanceled-packet");
                         var data = JsonConvert.DeserializeObject<Packets.SimpleRole>(normalPacket.Data);
                         Program.DebugLog($"{data.Role}'s action was canceled");
+                        RoleManager.GetRole(data.Role).PrepareCancelAction();
                         if (PlayerData.LocalPlayer.Role == data.Role)
                         {
-                            RoleManager.GetRole(data.Role).IsActionCancelled = true;
                             UiHandler.CancelPrompt();
-                            UiHandler.DisplayInGameMenu();
                         }
+                        break;
+                    }
+                    // Stimme eines Werwolfes wurde gesendet
+                    case PacketDataType.WerwolfVote:
+                    {
+                        var data = JsonConvert.DeserializeObject<Packets.SimplePlayerId>(normalPacket.Data);
+                        var role = (Werwolf) RoleManager.GetRole(RoleType.Werwolf);
+                        role.Votes[normalPacket.Sender] = data.Id;
+                        if (PlayerData.LocalPlayer.Role == RoleType.Werwolf)
+                            Task.Run(role.SelectVictim);
+
+                        if (PlayerData.LocalPlayer.IsHost)
+                        {
+                            role.CalculateVictim();
+                        }
+                        break;
+                    }
+                    // Den Werwölfen wird ihr Opfer angekündigt
+                    case PacketDataType.WerwolfAnnounceVictim:
+                    {
+                        var data = JsonConvert.DeserializeObject<Packets.SimplePlayerId>(normalPacket.Data);
+                        if (PlayerData.LocalPlayer.Role == RoleType.Werwolf && PlayerData.LocalPlayer.IsAlive)
+                            ((Werwolf) RoleManager.GetRole(RoleType.Werwolf)).AnnounceVictim(data.Id);
+                        break;
+                    }
+                    case PacketDataType.PlayerDies:
+                    {
+                        var data = JsonConvert.DeserializeObject<Packets.SimplePlayerId>(normalPacket.Data);
+                        GameManager.DeadPlayersDuringNight.Add(data.Id);
                         break;
                     }
                     default:
