@@ -63,7 +63,7 @@ public class RoleManager
     public static Dictionary<string, int> WaitingForRole { get; } = new Dictionary<string, int>();
     
     // Ruft die Spieler mit der Rolle auf und verwaltet den Ablauf der jeweiligen Aktion
-    public static void CallRole(RoleType role)
+    public static void RpcCallRole(RoleType role)
     {
         WaitingForRole.Clear();
         foreach (var playerData in PlayerData.Players)
@@ -83,13 +83,15 @@ public class RoleManager
         {
             if (timer.IsCompleted)
             {
-                foreach (var player in WaitingForRole)
+                for (var i = 0; i < WaitingForRole.Count; i++)
                 {
-                    if (player.Value == 0)
+                    var pair = WaitingForRole.ElementAt(i);
+                    if (pair.Value == 0)
                     {
                         NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
                             new SendToPacket(NetworkingManager.Instance.CurrentId, PacketDataType.RoleCanceled,
-                                JsonConvert.SerializeObject(new Packets.SimpleRole(role)), player.Key)));
+                                JsonConvert.SerializeObject(new Packets.SimpleRole(role)), pair.Key)));
+                        WaitingForRole[pair.Key] = 1;
                     }
                 }
                 

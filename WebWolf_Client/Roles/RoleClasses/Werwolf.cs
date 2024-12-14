@@ -1,14 +1,16 @@
 ﻿using Newtonsoft.Json;
 using Spectre.Console;
 using WebWolf_Client.Networking;
+using WebWolf_Client.Ui;
 
 namespace WebWolf_Client.Roles.RoleClasses;
 
 public class Werwolf : Role
 {
+    public static string LastVicitmId;
+    
     public override RoleType RoleType => RoleType.Werwolf;
     public override bool IsActiveRole => true;
-    public override RoleType AfterRole => RoleType.Seherin;
 
     public Dictionary<string, string> Votes = new Dictionary<string, string>();
     public bool HasVoted;
@@ -24,15 +26,14 @@ public class Werwolf : Role
     {
         Votes.Clear();
         HasVoted = false;
-        if (IsActionCancelled) return;
-        var center = UiHandler.DrawCircle(PlayerData.Players.ConvertAll(player => (player.Role == RoleType.Werwolf ? "[red]" : "") + player.Name + (player.Role == RoleType.Werwolf ? "[/]" : "") + (player.IsLocal ? " [green](Du)[/]" : "")));
-        if (IsActionCancelled) return;
-        UiHandler.RenderTextAroundPoint(center, "Die Werwölfe (Du) erwachen...");
-        if (IsActionCancelled) return;
-        Task.Delay(1000).Wait();
-        if (IsActionCancelled) return;
+        if (CancelCheck(() => UiHandler.LocalUiMessage(UiMessageType.DrawPlayerNameCircle, 
+                JsonConvert.SerializeObject(new UiMessageClasses.SpecialPlayerCircle(UiHandler.PlayersToPlayerNames
+                    (PlayerData.Players, true, true, "red", RoleType.Werwolf), 
+                    "Die Werwölfe (Du) erwachen..."))))) return;
+        if (CancelCheck(() => Task.Delay(1000).Wait())) return;
+        
+        if (CancelCheck(SelectVictim)) return;
         //AnsiConsole.Write(new Align(new Panel(String.Join(", ", Program.DebugNames)).Header("Spieler"), HorizontalAlignment.Center));
-        SelectVictim();
     }
 
     public void SelectVictim()
@@ -48,12 +49,12 @@ public class Werwolf : Role
         });
         if (!HasVoted)
         {
-            var playerName = UiHandler.Prompt(
-                new SelectionPrompt<string>()
-                    .Title("Wähle einen Spieler den du umbringen möchtest:")
-                    .PageSize(10)
-                    .AddChoices(playerList));
-            if (IsActionCancelled) return;
+            var playerName = "";
+            if (CancelCheck(() => playerName = UiHandler.Prompt(
+                    new SelectionPrompt<string>()
+                        .Title("Wähle einen Spieler den du umbringen möchtest:")
+                        .PageSize(10)
+                        .AddChoices(playerList)))) return;
             Program.DebugLog("Choice: " + playerName);
         
             var player = PlayerData.Players.FirstOrDefault(p => p.Name == playerName.Split(" (Votes: ")[0]);
@@ -62,9 +63,8 @@ public class Werwolf : Role
 
             HasVoted = true;
             NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
-                new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.RoleFinished, JsonConvert.SerializeObject(new Packets.SimpleRole(RoleType.Werwolf)))));
-            NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
                 new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.WerwolfVote, JsonConvert.SerializeObject(new Packets.SimplePlayerId(player.Id)))));
+            RpcFinishedAction();
         }
         else
         {
@@ -77,8 +77,6 @@ public class Werwolf : Role
 
     public void CalculateVictim()
     {
-        var err = new Exception();
-        Program.DebugLog(err.StackTrace);
         if (Votes.Count == PlayerData.Players.Count(player => player is { Role: RoleType.Werwolf, IsAlive: true }) || IsActionCancelled)
         {
             var calcVotes = new Dictionary<string, int>();
@@ -90,22 +88,24 @@ public class Werwolf : Role
 
             calcVotes = calcVotes.OrderByDescending(x => x.Value).ToDictionary(x => x.Key, x => x.Value);
                                 
-            if (calcVotes.Count > 1 && calcVotes.Values.ToArray()[0] == calcVotes.Values.ToArray()[1])
-                NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
-                    new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.WerwolfAnnounceVictim, 
-                        JsonConvert.SerializeObject(new Packets.SimplePlayerId("")))));
+            if (calcVotes.Count == 0 || (calcVotes.Count > 1 && calcVotes.Values.ToArray()[0] == calcVotes.Values.ToArray()[1]))
+                RpcAnnounceVictim("");
             else
             {
-                NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
-                    new BroadcastPacket(NetworkingManager.Instance.CurrentId,
-                        PacketDataType.WerwolfAnnounceVictim,
-                        JsonConvert.SerializeObject(
-                            new Packets.SimplePlayerId(calcVotes.First().Key)))));
-                                    
-                NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
-                    new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.PlayerDies, JsonConvert.SerializeObject(new Packets.SimplePlayerId(calcVotes.First().Key)))));
+                var playerId = calcVotes.First().Key;
+                RpcAnnounceVictim(playerId);
+                PlayerData.GetPlayer(playerId).RpcMarkAsDead();
             }
         }
+    }
+    
+    private void RpcAnnounceVictim(string playerId)
+    {
+        NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
+            new BroadcastPacket(NetworkingManager.Instance.CurrentId,
+                PacketDataType.WerwolfAnnounceVictim,
+                JsonConvert.SerializeObject(
+                    new Packets.SimplePlayerId(playerId)))));
     }
 
     public void AnnounceVictim(string playerId)
@@ -117,16 +117,14 @@ public class Werwolf : Role
 
         var player = PlayerData.GetPlayer(playerId);
         if (player == null)
-            UiHandler.RenderText($"Es wurde kein Opfer gefunden!");
+            UiHandler.LocalUiMessage(UiMessageType.RenderText, "Es wurde kein Opfer gefunden!");
         else
-            UiHandler.RenderText($"Ihr habt {player.Name} als Opfer ausgewählt!");
+            UiHandler.LocalUiMessage(UiMessageType.RenderText, $"Ihr habt {player.Name} als Opfer ausgewählt!");
             
         Task.Delay(1000).Wait();
-        UiHandler.DisplayInGameMenu();
+        UiHandler.LocalUiMessage(UiMessageType.DisplayInGameMenu);
         Task.Delay(1000).Wait();
         
-        if (HasVoted)
-            NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
-                new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.RoleFinished, JsonConvert.SerializeObject(new Packets.SimpleRole(RoleType.Werwolf)))));
+        RpcFinishedAction();
     }
 }

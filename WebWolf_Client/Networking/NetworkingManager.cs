@@ -3,6 +3,7 @@ using Newtonsoft.Json;
 using Websocket.Client;
 using WebWolf_Client.Roles;
 using WebWolf_Client.Roles.RoleClasses;
+using WebWolf_Client.Ui;
 
 namespace WebWolf_Client.Networking;
 
@@ -234,14 +235,34 @@ public class NetworkingManager
                     case PacketDataType.WerwolfAnnounceVictim:
                     {
                         var data = JsonConvert.DeserializeObject<Packets.SimplePlayerId>(normalPacket.Data);
+                        Werwolf.LastVicitmId = data.Id;
                         if (PlayerData.LocalPlayer.Role == RoleType.Werwolf && PlayerData.LocalPlayer.IsAlive)
                             ((Werwolf) RoleManager.GetRole(RoleType.Werwolf)).AnnounceVictim(data.Id);
                         break;
                     }
-                    case PacketDataType.PlayerDies:
+                    case PacketDataType.PlayerMarkedAsDead:
                     {
                         var data = JsonConvert.DeserializeObject<Packets.SimplePlayerId>(normalPacket.Data);
-                        GameManager.DeadPlayersDuringNight.Add(data.Id);
+                        PlayerData.GetPlayer(data.Id).MarkAsDead();
+                        break;
+                    }
+                    case PacketDataType.PlayerProcessDeaths:
+                    {
+                        PlayerData.ProcessDeaths();
+                        break;
+                    }
+                    case PacketDataType.UiMessage:
+                    {
+                        Program.DebugLog("Received UiMessage-packet");
+                        var data = JsonConvert.DeserializeObject<Packets.UiMessage>(normalPacket.Data);
+                        UiHandler.LocalUiMessage(data.Type, data.Message, data.Id);
+                        break;
+                    }
+                    case PacketDataType.UiMessageFinished:
+                    {
+                        Program.DebugLog("Received UiMessageFinished-packet");
+                        if (PlayerData.LocalPlayer.IsHost)
+                            UiHandler.UiMessagesWaitList[normalPacket.Data].Remove(normalPacket.Sender);
                         break;
                     }
                     default:

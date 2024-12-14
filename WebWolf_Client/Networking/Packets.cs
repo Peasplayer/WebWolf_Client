@@ -1,4 +1,5 @@
 using WebWolf_Client.Roles;
+using WebWolf_Client.Ui;
 
 namespace WebWolf_Client.Networking;
 
@@ -66,6 +67,20 @@ public class Packets
 
         public SimplePlayerId(string id)
         {
+            Id = id;
+        }
+    }
+    
+    public class UiMessage
+    {
+        public UiMessageType Type { get; }
+        public string Message { get; }
+        public string Id { get; }
+
+        public UiMessage(UiMessageType type, string message, string id)
+        {
+            Type = type;
+            Message = message;
             Id = id;
         }
     }

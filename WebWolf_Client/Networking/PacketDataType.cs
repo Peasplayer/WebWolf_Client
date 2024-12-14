@@ -14,5 +14,10 @@ public enum PacketDataType : uint
     RoleCanceled,
     WerwolfVote,
     WerwolfAnnounceVictim,
-    PlayerDies
+    PlayerMarkedAsDead,
+    PlayerProcessDeaths,
+    
+    // UI Packets
+    UiMessage,
+    UiMessageFinished,
 }

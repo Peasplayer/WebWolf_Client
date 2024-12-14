@@ -19,7 +19,8 @@ public class PlayerData
     public bool IsHost { get; private set; }
     public RoleType Role { get; private set; }
     public bool IsLocal => LocalPlayer.Id == Id;
-    public bool IsAlive = true;
+    public bool IsMarkedAsDead {get; private set; }
+    public bool IsAlive {get; private set; } = true;
 
     public PlayerData(string name, string? id, bool isHost = false, RoleType role = RoleType.NoRole)
     {
@@ -47,14 +48,45 @@ public class PlayerData
 
     public void RpcSetRole(RoleType role)
     {
-        NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
-            new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.SetRole, 
-                "{'Id': '" + Id + "', 'Role': '" + role + "'}")));
-        SetRole(role);
+        if (LocalPlayer.IsHost)
+            NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
+                new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.SetRole, 
+                    "{'Id': '" + Id + "', 'Role': '" + role + "'}")));
     }
 
     public void SetRole(RoleType role)
     {
         Role = role;
+    }
+    
+    public void RpcMarkAsDead()
+    {
+        if (LocalPlayer.IsHost)
+            NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
+                new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.PlayerMarkedAsDead, 
+                    JsonConvert.SerializeObject(new Packets.SimplePlayerId(Id)))));
+    }
+    
+    public void MarkAsDead()
+    {
+        IsMarkedAsDead = true;
+    }
+    
+    public static void RpcProcessDeaths()
+    {
+        if (LocalPlayer.IsHost)
+            NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
+                new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.PlayerProcessDeaths, "")));
+    }
+    
+    public static void ProcessDeaths()
+    {
+        foreach (var player in Players)
+        {
+            if (player.IsMarkedAsDead)
+            {
+                player.IsAlive = player.IsMarkedAsDead = false;
+            }
+        }
     }
 }

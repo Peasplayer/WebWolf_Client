@@ -8,7 +8,7 @@ using WebWolf_Client.Networking;
 using WebWolf_Client.Roles;
 using Color = Spectre.Console.Color;
 
-namespace WebWolf_Client;
+namespace WebWolf_Client.Ui;
 
 public static class UiHandler
 {
@@ -107,6 +107,9 @@ public static class UiHandler
     {
         try
         {
+            // Entfernt alle Tasteneingaben, die vor dem Prompt gemacht wurden
+            while (Console.KeyAvailable) Console.ReadKey();
+            
             CancelPrompt();
 
             _promptCancel = new CancellationTokenSource();
@@ -180,14 +183,14 @@ public static class UiHandler
         }
     }
 
-    public static void DisplayCardReveal()
+    private static void DisplayCardReveal()
     {
         AnsiConsole.Clear();
         RenderCard(PlayerData.LocalPlayer.Role,PlayerData.LocalPlayer.Role.ToString());
         Thread.Sleep(5 * 1000);
     }
     
-    public static Point DrawCircle(List<string> texts)
+    private static Point DrawCircle(List<string> texts)
     {
         AnsiConsole.Clear();
         var height = Console.WindowHeight;
@@ -219,7 +222,7 @@ public static class UiHandler
         return new Point((int) Math.Round(centerX, MidpointRounding.AwayFromZero), (int) Math.Round(centerY, MidpointRounding.AwayFromZero));
     }
 
-    public static void RenderText(string text, int delayBetweenChar = 47)
+    private static void RenderText(string text, int delayBetweenChar = 47)
     {
         var lines = text.Split('\n');
         for (var i = 0; i < lines.Length; i++)
@@ -236,7 +239,7 @@ public static class UiHandler
         }
     }
 
-    public static void RenderTextAroundPoint(Point point, string text, int delayBetweenChar = 47, int delayBetweenLines = 200)
+    private static void RenderTextAroundPoint(Point point, string text, int delayBetweenChar = 47, int delayBetweenLines = 200)
     {
         var lines = text.Split('\n');
         
@@ -251,14 +254,79 @@ public static class UiHandler
         }
     }
 
-    public static Point DrawPlayerNameCircle()
+    public static readonly Dictionary<string, List<string>> UiMessagesWaitList = new Dictionary<string, List<string>>();
+    
+    public static void RpcUiMessage(UiMessageType type, string data = "")
     {
-        return DrawCircle(PlayerData.Players.ConvertAll(player => player.Name + (player.IsLocal ? " [green](Du)[/]" : "") + (!player.IsAlive ? " [red](Tot)[/]" : "")));
+        var messageId = Guid.NewGuid().ToString();
+        UiMessagesWaitList.Add(messageId, new List<string>());
+        foreach (var playerData in PlayerData.Players)
+        {
+            UiMessagesWaitList[messageId].Add(playerData.Id);
+        }
+        NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
+            new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.UiMessage, JsonConvert.SerializeObject(new Packets.UiMessage(type, data, messageId)))));
+        
+        while (UiMessagesWaitList[messageId].Count > 0) { }
+    }
+    
+    public static void LocalUiMessage(UiMessageType type, string data = "", string messageId = "")
+    {
+        switch (type)
+        {
+            case UiMessageType.RenderText:
+                RenderText(data);
+                break;
+            case UiMessageType.DrawPlayerNameCircle:
+                if (data.StartsWith("{") && data.EndsWith("}"))
+                {
+                    var specialData = JsonConvert.DeserializeObject<UiMessageClasses.SpecialPlayerCircle>(data);
+                    DrawPlayerNameCircle(specialData.CenterText, specialData.PlayerNames);
+                }
+                else
+                    DrawPlayerNameCircle(data);
+                break;
+            case UiMessageType.DisplayInGameMenu:
+                DisplayInGameMenu();
+                break;
+            case UiMessageType.DisplayCardReveal:
+                DisplayCardReveal();
+                break;
+        }
+        
+        if (messageId != "")
+            NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
+                new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.UiMessageFinished, messageId)));
+    }
+    
+    private static void DrawPlayerNameCircle(string centerText = "", List<string>? playerNames = null)
+    {
+        var point = DrawCircle(playerNames ?? PlayersToPlayerNames(PlayerData.Players));
+        if (centerText != "")
+            RenderTextAroundPoint(point, centerText);
     }
 
-    public static void DisplayInGameMenu()
+    private static void DisplayInGameMenu()
     {
-        var center = DrawPlayerNameCircle();
-        RenderTextAroundPoint(center, GameManager.InGameState == GameManager.InGameStateType.Night ? "Alle Dorfbewohner schlafen (zzZ)" : "Tag");
+        DrawPlayerNameCircle(GameManager.InGameState == GameManager.InGameStateType.Night ? "Alle Dorfbewohner schlafen (zzZ)" : "Tag");
+    }
+
+    public static List<string> PlayersToPlayerNames(List<PlayerData> players, bool showSelf = true, bool showDead = true, string color = "", RoleType roleForColor = RoleType.NoRole)
+    {
+        return players.ConvertAll(player =>
+        {
+            var result = "";
+            if (color != "" && (roleForColor == RoleType.NoRole || player.Role == roleForColor))
+                result += "[" + color + "]";
+            result += player.Name;
+            if (color != "" && (roleForColor == RoleType.NoRole || player.Role == roleForColor))
+                result += "[/]";
+            if (showSelf && player.IsLocal)
+                result += " [green](Du)[/]";
+            if (showDead && !player.IsAlive)
+                result += " [red](Tot)[/]";
+
+            return result;
+        });
     }
 }

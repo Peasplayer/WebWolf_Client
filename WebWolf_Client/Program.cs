@@ -2,6 +2,7 @@
 using System.Net.WebSockets;
 using Websocket.Client;
 using WebWolf_Client.Networking;
+using WebWolf_Client.Ui;
 
 namespace WebWolf_Client;
 
@@ -16,7 +17,6 @@ class Program
     
     static void Main(string[] args)
     {
-        
         // Zum Debuggen, so können die Logs zugeordnet werden
         Console.Title = $"WebWolf Client ({Process.GetCurrentProcess().Id})";
         AppDomain.CurrentDomain.UnhandledException += (sender, eventArgs) => DebugLog($"Unhandled Exception: {eventArgs.ExceptionObject}");
