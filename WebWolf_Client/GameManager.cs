@@ -55,8 +55,14 @@ public class GameManager
                 
                 PlayerData.RpcProcessDeaths();
                 Task.Delay(1000).Wait();
-                UiHandler.RpcUiMessage(UiMessageType.DrawPlayerNameCircle);
+                // Rolle wird offenbart
+                UiHandler.RpcUiMessage(UiMessageType.DrawPlayerNameCircle, string.Join("\n", markedAsDead.ConvertAll(player => $"{player.Name} war {player.Role}")));
                 Task.Delay(2000).Wait();
+                
+                // Abstimmung
+                UiHandler.RpcUiMessage(UiMessageType.DrawPlayerNameCircle, "Anschließend beratet ihr, die Dorfbewohner, euch...\nWer könnte ein Werwolf sein?");
+                Task.Delay(1000).Wait();
+                RpcStartVillageVote();
                 
                 // Am Ende des Tages wird die nächste Nacht gestartet
                 if (PlayerData.LocalPlayer.IsHost)
@@ -98,6 +104,15 @@ public class GameManager
             while (PlayerData.Players.Find(player => player.Role == RoleType.NoRole) != null) ;
             UiHandler.RpcUiMessage(UiMessageType.DisplayCardReveal);
             
+            // Anzahl der Rollen werden angezeigt
+            var lines = "Es gibt folgende Rollen: ";
+            foreach (var role in RoleManager.Roles)
+            {
+                lines += $"\n{RoleManager.GetPlayersWithRole(role.RoleType).Count} * {role.RoleType}";
+            }
+            UiHandler.RpcUiMessage(UiMessageType.DrawPlayerNameCircle, lines);
+            Task.Delay(1000).Wait();
+            
             // Kurze Begrüßung
             UiHandler.RpcUiMessage(UiMessageType.DrawPlayerNameCircle, "Nach einem anstrengenden Umzug nach Düsterwald\n" +
                                                                        "fallt ihr alle müde in eure Betten.\nUnd die erste Nacht beginnt...");
@@ -112,6 +127,80 @@ public class GameManager
     {
         NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
             new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.StartNightOrDay, JsonConvert.SerializeObject(new Packets.SimpleBoolean(isNight)))));
+    }
+    
+    // Verzeichnis der Stimmen
+    public static Dictionary<string, string> Votes = new Dictionary<string, string>();
+    public static bool HasVoted;
+    
+    // Host startet die Abstimmung
+    public static void RpcStartVillageVote()
+    {
+        NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
+            new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.VillageVoteStart, "")));
+        Votes.Clear();
+        
+        // Timer wird gestartet
+        var timer = Task.Delay(60 * 1000);
+        var validVoters = PlayerData.Players.Count(player => player.IsAlive);
+        while (Votes.Count < validVoters)
+        {
+            if (timer.IsCompleted)
+            {
+                break;
+            }
+        }
+        
+        // Falls die Abstimmung noch läuft, wird sie abgebrochen
+        NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
+            new BroadcastPacket(NetworkingManager.Instance.CurrentId,
+                PacketDataType.VillageVoteCanceled, "")));
+        
+        // Ergebnis wird berechnet
+        var calcVotes = new Dictionary<string, int>();
+        foreach (var vote in Votes)
+        {
+            calcVotes.TryAdd(vote.Value, 0);
+            calcVotes[vote.Value]++;
+        }
+
+        calcVotes = calcVotes.OrderByDescending(x => x.Value).ToDictionary(x => x.Key, x => x.Value);
+        
+        Task.Delay(1000).Wait();
+        
+        // Das Ergebnis der Abstimmung wird verkündet
+        if (calcVotes.Count == 0 || (calcVotes.Count > 1 && calcVotes.Values.ToArray()[0] == calcVotes.Values.ToArray()[1]))
+            VoteAnnounceVictim(null);
+        else
+            VoteAnnounceVictim(PlayerData.GetPlayer(calcVotes.First().Key));
+    }
+
+    public static void VoteAnnounceVictim(PlayerData? player)
+    {
+        if (player == null)
+        {
+            // Es wurde kein Opfer gefunden
+            UiHandler.RpcUiMessage(UiMessageType.DrawPlayerNameCircle,
+                $"Die Dorfbewohner haben entschieden!\nNiemand wurde zum Tode verurteilt!");
+        }
+        else
+        {
+            // Es wurde ein Opfer gefunden
+            UiHandler.RpcUiMessage(UiMessageType.DrawPlayerNameCircle,
+                $"Die Dorfbewohner haben entschieden!\n{player.Name} wurde zum Tode verurteilt!");
+            Task.Delay(1000).Wait();
+            
+            if (PlayerData.LocalPlayer.IsHost)
+            {
+                // Host setzt das Opfer auf Tod
+                player.RpcMarkAsDead();
+                PlayerData.RpcProcessDeaths();
+                
+                // Seine Rolle wird offenbart
+                UiHandler.RpcUiMessage(UiMessageType.DrawPlayerNameCircle, $"{player.Name} war {player.Role}!");
+                Task.Delay(1000).Wait();
+            }
+        }
     }
     
     public enum GameState

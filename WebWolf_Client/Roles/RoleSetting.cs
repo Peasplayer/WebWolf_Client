@@ -5,7 +5,7 @@ public class RoleSetting
     public static List<RoleSetting> RoleSettings = new List<RoleSetting>()
     {
         new RoleSetting(RoleType.Werwolf, 2),
-        new RoleSetting(RoleType.Hexe, 0),
+        new RoleSetting(RoleType.Hexe, 1),
         new RoleSetting(RoleType.Seherin, 1)
     };
 

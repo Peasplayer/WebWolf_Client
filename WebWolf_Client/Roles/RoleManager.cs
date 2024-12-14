@@ -9,7 +9,8 @@ public class RoleManager
     public static List<Role> Roles { get; set; } = new List<Role>()
     {
         new Seherin(),
-        new Werwolf()
+        new Werwolf(),
+        new Hexe()
     };
 
     public static Role GetRole(RoleType roleType)

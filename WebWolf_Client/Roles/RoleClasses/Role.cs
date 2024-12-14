@@ -23,8 +23,11 @@ public abstract class Role
     {
         UiHandler.LocalUiMessage(UiMessageType.DisplayInGameMenu);
     }
-    
-    public virtual void AfterCancel() { }
+
+    public virtual void AfterCancel()
+    {
+        RpcFinishedAction();
+    }
     
     protected bool CancelCheck(Action test)
     {
@@ -33,9 +36,6 @@ public abstract class Role
             test.DynamicInvoke();
             return false;
         }
-        
-        NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
-            new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.RoleFinished, JsonConvert.SerializeObject(new Packets.SimpleRole(RoleType)))));
         return false;
     }
     
@@ -44,6 +44,8 @@ public abstract class Role
         IsActionCancelled = false;
         StartAction();
     }
+
+    public abstract void ResetAction();
 
     protected abstract void StartAction();
 

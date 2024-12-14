@@ -14,6 +14,7 @@ public class Werwolf : Role
 
     public Dictionary<string, string> Votes = new Dictionary<string, string>();
     public bool HasVoted;
+    private bool VoteDone;
 
     protected override void CancelAction() { }
 
@@ -21,11 +22,16 @@ public class Werwolf : Role
     {
         CalculateVictim();
     }
-    
-    protected override void StartAction()
+
+    public override void ResetAction()
     {
         Votes.Clear();
         HasVoted = false;
+        VoteDone = false;
+    }
+
+    protected override void StartAction()
+    {
         if (CancelCheck(() => UiHandler.LocalUiMessage(UiMessageType.DrawPlayerNameCircle, 
                 JsonConvert.SerializeObject(new UiMessageClasses.SpecialPlayerCircle(UiHandler.PlayersToPlayerNames
                     (PlayerData.Players, true, true, "red", RoleType.Werwolf), 
@@ -57,7 +63,7 @@ public class Werwolf : Role
                         .AddChoices(playerList)))) return;
             Program.DebugLog("Choice: " + playerName);
         
-            var player = PlayerData.Players.FirstOrDefault(p => p.Name == playerName.Split(" (Votes: ")[0]);
+            var player = PlayerData.Players.FirstOrDefault(p => p.Name == playerName?.Split(" (Votes: ")[0]);
             if (player == null)
                 return;
 
@@ -77,8 +83,10 @@ public class Werwolf : Role
 
     public void CalculateVictim()
     {
-        if (Votes.Count == PlayerData.Players.Count(player => player is { Role: RoleType.Werwolf, IsAlive: true }) || IsActionCancelled)
+        if ((Votes.Count == PlayerData.Players.Count(player => player is { Role: RoleType.Werwolf, IsAlive: true }) ||
+             IsActionCancelled) && !VoteDone)
         {
+            VoteDone = true;
             var calcVotes = new Dictionary<string, int>();
             foreach (var vote in Votes)
             {
@@ -108,6 +116,7 @@ public class Werwolf : Role
                     new Packets.SimplePlayerId(playerId)))));
     }
 
+    // Werwölfen wird das Ergebnis ihrer Abstimmung gezeigt
     public void AnnounceVictim(string playerId)
     {
         UiHandler.CancelPrompt();

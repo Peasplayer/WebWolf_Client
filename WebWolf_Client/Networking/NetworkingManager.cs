@@ -178,9 +178,11 @@ public class NetworkingManager
                         Program.DebugLog("Received CallRole-packet");
                         var data = JsonConvert.DeserializeObject<Packets.SimpleRole>(normalPacket.Data);
                         Program.DebugLog($"Role {data.Role} is being called");
-                        if (PlayerData.LocalPlayer.Role == data.Role)
+                        var role = RoleManager.GetRole(data.Role);
+                        role.ResetAction();
+                        if (PlayerData.LocalPlayer.Role == data.Role && PlayerData.LocalPlayer.IsAlive)
                         {
-                            Task.Run(RoleManager.GetRole(data.Role).PrepareAction);
+                            Task.Run(role.PrepareAction);
                         }
                         break;
                     }
@@ -200,7 +202,7 @@ public class NetworkingManager
                         else
                         {
                             Program.DebugLog($"{normalPacket.Sender} finished role {data.Role}");
-                            RoleManager.WaitingForRole.Remove(normalPacket.Sender);
+                            RoleManager.WaitingForRole[normalPacket.Sender] = 2;
                         }
                         break;
                     }
@@ -209,11 +211,11 @@ public class NetworkingManager
                         Program.DebugLog("Received RoleCanceled-packet");
                         var data = JsonConvert.DeserializeObject<Packets.SimpleRole>(normalPacket.Data);
                         Program.DebugLog($"{data.Role}'s action was canceled");
-                        RoleManager.GetRole(data.Role).PrepareCancelAction();
                         if (PlayerData.LocalPlayer.Role == data.Role)
                         {
                             UiHandler.CancelPrompt();
                         }
+                        RoleManager.GetRole(data.Role).PrepareCancelAction();
                         break;
                     }
                     // Stimme eines Werwolfes wurde gesendet
@@ -222,7 +224,7 @@ public class NetworkingManager
                         var data = JsonConvert.DeserializeObject<Packets.SimplePlayerId>(normalPacket.Data);
                         var role = (Werwolf) RoleManager.GetRole(RoleType.Werwolf);
                         role.Votes[normalPacket.Sender] = data.Id;
-                        if (PlayerData.LocalPlayer.Role == RoleType.Werwolf)
+                        if (PlayerData.LocalPlayer.Role == RoleType.Werwolf && role.Votes.Count < PlayerData.Players.Count(player => player is { Role: RoleType.Werwolf, IsAlive: true }))
                             Task.Run(role.SelectVictim);
 
                         if (PlayerData.LocalPlayer.IsHost)
@@ -243,12 +245,45 @@ public class NetworkingManager
                     case PacketDataType.PlayerMarkedAsDead:
                     {
                         var data = JsonConvert.DeserializeObject<Packets.SimplePlayerId>(normalPacket.Data);
-                        PlayerData.GetPlayer(data.Id).MarkAsDead();
+                        PlayerData.GetPlayer(data.Id).MarkAsDead(true);
+                        break;
+                    }
+                    case PacketDataType.PlayerUnmarkedAsDead:
+                    {
+                        var data = JsonConvert.DeserializeObject<Packets.SimplePlayerId>(normalPacket.Data);
+                        PlayerData.GetPlayer(data.Id).MarkAsDead(false);
                         break;
                     }
                     case PacketDataType.PlayerProcessDeaths:
                     {
                         PlayerData.ProcessDeaths();
+                        break;
+                    }
+                    case PacketDataType.VillageVoteStart:
+                    {
+                        Program.DebugLog("Received VillageVoteStart-packet");
+                        GameManager.Votes.Clear();
+                        GameManager.HasVoted = !PlayerData.LocalPlayer.IsAlive;
+                        Task.Run(UiHandler.DisplayVillageVote);
+                        break;
+                    }
+                    case PacketDataType.VillageVoteVoted:
+                    {
+                        Program.DebugLog("Received VillageVoteStart-packet");
+                        var data = JsonConvert.DeserializeObject<Packets.SimplePlayerId>(normalPacket.Data);
+                        GameManager.Votes[normalPacket.Sender] = data.Id;
+                        Task.Run(UiHandler.DisplayVillageVote);
+                        break;
+                    }
+                    case PacketDataType.VillageVoteCanceled:
+                    {
+                        Program.DebugLog("Received VillageVoteCanceled-packet");
+                        UiHandler.CancelPrompt();
+                        break;
+                    }
+                    case PacketDataType.VillageVoteAnnounceVictim:
+                    {
+                        Program.DebugLog("Received VillageVoteAnnounceVictim-packet");
                         break;
                     }
                     case PacketDataType.UiMessage:

@@ -2,22 +2,36 @@ namespace WebWolf_Client.Networking;
 
 public enum PacketDataType : uint
 {
+    // Spiel-System
     Join,
     Leave,
     SyncLobby,
     SetHost,
     StartGame,
-    SetRole,
     StartNightOrDay,
+    
+    // Rollen
+    SetRole,
     CallRole,
     RoleFinished,
     RoleCanceled,
+    
+    // Werwölfe
     WerwolfVote,
     WerwolfAnnounceVictim,
+    
+    // Spieler
     PlayerMarkedAsDead,
+    PlayerUnmarkedAsDead,
     PlayerProcessDeaths,
     
-    // UI Packets
+    // Abstimmung
+    VillageVoteStart,
+    VillageVoteVoted,
+    VillageVoteCanceled,
+    VillageVoteAnnounceVictim,
+    
+    // UI
     UiMessage,
     UiMessageFinished,
 }

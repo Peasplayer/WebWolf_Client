@@ -311,6 +311,64 @@ public static class UiHandler
         DrawPlayerNameCircle(GameManager.InGameState == GameManager.InGameStateType.Night ? "Alle Dorfbewohner schlafen (zzZ)" : "Tag");
     }
 
+    public static void DisplayVillageVote()
+    {
+        UiHandler.CancelPrompt();
+        AnsiConsole.Clear();
+        
+        // Übersicht aller Spieler
+        AnsiConsole.Write(new Align(new Panel(String.Join(", ", PlayersToPlayerNames(PlayerData.Players))).Header("Spieler"), HorizontalAlignment.Center));
+        AnsiConsole.WriteLine("\n");
+
+        // Liste an Optionen mit jeweiligen Stimmen
+        string VotesForOption(string id, string name)
+        {
+            var votes = GameManager.Votes.Where(pair => pair.Value == id)
+                .ToList()
+                .ConvertAll(pair => PlayerData.GetPlayer(pair.Key).Name);
+            return name + (votes.ToArray().Length > 0 ? $" (Votes: {string.Join(", ", votes)})" : "");
+        }
+        var voterList = PlayerData.Players.ConvertAll(player => VotesForOption(player.Id, player.Name));
+        voterList.Add(VotesForOption("skipped", "   Überspringen"));
+
+        if (!GameManager.HasVoted)
+        {
+            // Gibt den Spielern eine Auswahl für wen sie abstimmen wollen
+            var playerName = UiHandler.Prompt(
+                new SelectionPrompt<string>()
+                    .Title("Wähle einen Spieler den du für einen Werwolf hälst:")
+                    .PageSize(10)
+                    .AddChoices(voterList));
+            Program.DebugLog("Choice: " + playerName);
+            // Überprüft, ob "Überspringen" ausgewählt wurde
+            var votedPlayerId = "";
+            if (playerName.Split(" (Votes: ")[0] == "   Überspringen")
+            {
+                votedPlayerId = "skipped";
+            }
+            // Überprüft, ob und welcher Spieler gewählt wurde
+            else
+            {
+                var player = PlayerData.Players.FirstOrDefault(p => p.Name == playerName.Split(" (Votes: ")[0]);
+                if (player == null)
+                    return;
+                votedPlayerId = player.Id;
+            }
+            
+            // Sendet dem Host welcher Spieler gewählt wurde
+            GameManager.HasVoted = true;
+            NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
+                new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.VillageVoteVoted, JsonConvert.SerializeObject(new Packets.SimplePlayerId(votedPlayerId))))); 
+        }
+        else
+        {
+            foreach (var player in voterList)
+            {
+                AnsiConsole.WriteLine(player); 
+            }
+        }
+    }
+    
     public static List<string> PlayersToPlayerNames(List<PlayerData> players, bool showSelf = true, bool showDead = true, string color = "", RoleType roleForColor = RoleType.NoRole)
     {
         return players.ConvertAll(player =>

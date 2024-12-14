@@ -59,19 +59,28 @@ public class PlayerData
         Role = role;
     }
     
+    // Setzt die Eigenschaft bei allen Clients
     public void RpcMarkAsDead()
     {
-        if (LocalPlayer.IsHost)
-            NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
-                new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.PlayerMarkedAsDead, 
-                    JsonConvert.SerializeObject(new Packets.SimplePlayerId(Id)))));
+        NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
+            new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.PlayerMarkedAsDead, 
+                JsonConvert.SerializeObject(new Packets.SimplePlayerId(Id)))));
     }
     
-    public void MarkAsDead()
+    // Setzt die Eigenschaft bei allen Clients
+    public void RpcUnmarkAsDead()
     {
-        IsMarkedAsDead = true;
+        NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
+            new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.PlayerUnmarkedAsDead, 
+                JsonConvert.SerializeObject(new Packets.SimplePlayerId(Id)))));
     }
     
+    public void MarkAsDead(bool value)
+    {
+        IsMarkedAsDead = value;
+    }
+    
+    // Setzt die Eigenschaft bei allen Clients
     public static void RpcProcessDeaths()
     {
         if (LocalPlayer.IsHost)
