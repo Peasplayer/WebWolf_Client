@@ -7,7 +7,6 @@ public class Jäger : Role
 {
     public override RoleType RoleType => RoleType.Jäger;
     public override bool IsAliveRole => false;
-    public override void ResetAction() {}
 
     protected override void StartAction()
     {

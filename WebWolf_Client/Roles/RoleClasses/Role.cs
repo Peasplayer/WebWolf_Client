@@ -14,6 +14,8 @@ public abstract class Role
     protected bool IsActionCancelled { get; private set; }
     
     public int MaxAmount => SettingsManager.GetMaxAmount(RoleType);
+    
+    public virtual void InitRole() { }
 
     public void PrepareCancelAction()
     {
@@ -52,7 +54,7 @@ public abstract class Role
         StartAction();
     }
 
-    public abstract void ResetAction();
+    public virtual void ResetAction() {}
 
     protected abstract void StartAction();
 

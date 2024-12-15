@@ -31,6 +31,9 @@ public class GameManager
     {
         InGameState = newState;
 
+        if (newState == InGameStateType.NoGame)
+            return;
+        
         if (PlayerData.LocalPlayer.IsHost)
         {
             // Zeigt das passende Menü an
@@ -180,6 +183,11 @@ public class GameManager
 
     public static void OnGameStart()
     {
+        foreach (var role in RoleManager.Roles)
+        {
+            role.InitRole();
+        }
+
         if (PlayerData.LocalPlayer.IsHost)
         {
             // Rollen werden zugewiesen und angezeigt

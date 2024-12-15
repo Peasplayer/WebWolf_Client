@@ -8,8 +8,6 @@ public class Seherin : Role
     public override RoleType RoleType => RoleType.Seherin;
     public override bool IsAliveRole => true;
 
-    public override void ResetAction() { }
-
     protected override void StartAction()
     {
         if (CancelCheck(() => UiHandler.LocalUiMessage(UiMessageType.DrawPlayerNameCircle, "Die Seherin (Du) erwacht..."))) return;

@@ -8,9 +8,14 @@ public class Amor : Role
 {
     public override RoleType RoleType => RoleType.Amor;
     public override bool IsAliveRole => true;
-    public override void ResetAction() { }
 
-    private bool CreatedCouple = false;
+    private bool CreatedCouple;
+
+    public override void InitRole()
+    {
+        CreatedCouple = false;
+    }
+
     protected override void StartAction()
     {
         var playersInLove = PlayerData.Players.FindAll(player => player is { InLove: true, IsAlive: true });

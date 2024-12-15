@@ -5,14 +5,18 @@ namespace WebWolf_Client.Roles.RoleClasses;
 
 public class Hexe : Role
 {
+    public override RoleType RoleType => RoleType.Hexe;
+    public override bool IsAliveRole => true;
+    
     private bool HealingPotionAvailable = true;
     private bool PoisonPotionAvailable = true;
-    public override RoleType RoleType => RoleType.Hexe;
 
-    public override bool IsAliveRole => true;
+    public override void InitRole()
+    {
+        HealingPotionAvailable = true;
+        PoisonPotionAvailable = true;
+    }
 
-    public override void ResetAction() { }
-    
     protected override void StartAction()
     {
         if (CancelCheck(() => UiHandler.LocalUiMessage(UiMessageType.DrawPlayerNameCircle, "Die Hexe (Du) erwacht..."))) return;

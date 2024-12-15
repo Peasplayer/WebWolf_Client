@@ -57,6 +57,7 @@ public static class UiHandler
                     Program.KeepAlive = true;
                     NetworkingManager.Instance.InitialConnectionSuccessful = true;
                     GameManager.ChangeState(GameManager.GameState.InLobby);
+                    GameManager.ChangeInGameState(GameManager.InGameStateType.NoGame);
                 }
                 // Wenn Server nicht erreichbar ist, wird ein Fehler ausgegeben
                 else
@@ -125,9 +126,6 @@ public static class UiHandler
             else
                 AnsiConsole.Write(" ");
         }
-
-        //Fals in der live preview die ID angezeigt werden soll
-        //player.Id ?? "[grey]Keine ID[/]"
     }
 
     private static CancellationTokenSource? _promptCancel;
@@ -201,6 +199,7 @@ public static class UiHandler
             StartPlayerPrompt(CurrentPlayerPrompt.Item1, CurrentPlayerPrompt.Item2, CurrentPlayerPrompt.Item3, CurrentPlayerPrompt.Item4);
     }
 
+    // Löscht nur eine Reihe der Console
     public static void ClearConsoleLine(int line = 1)
     {
         int currentLineCursor = Console.CursorTop;
@@ -212,6 +211,7 @@ public static class UiHandler
         Console.SetCursorPosition(0, currentLineCursor - line);
     }
 
+    // Zeigt das Bild einer Rolle an
     public static void RenderCard(RoleType role, string title, int size = 20)
     {
         var image =
@@ -223,6 +223,7 @@ public static class UiHandler
         AnsiConsole.Write(new FigletText(title).Centered().Color(Color.RosyBrown));
     }
 
+    // Wenn der Benutzer die Verbindung zu dem Server verliert, wird ein Fehlerbildschirm mit weiteren Informationen angezeigt
     public static void DisplayDisconnectionScreen(DisconnectionInfo info)
     {
         AnsiConsole.Clear();
@@ -265,14 +266,14 @@ public static class UiHandler
         }
 
     }
-
+    // Am Anfang des Spieles wird jedem Spieler seine Rolle angezeigt
     private static void DisplayCardReveal()
     {
         AnsiConsole.Clear();
         RenderCard(PlayerData.LocalPlayer.Role,PlayerData.LocalPlayer.Role.ToString());
         Thread.Sleep(5 * 1000);
     }
-    
+    // Mach einen Kreis in dem die Namen der Spieler angezigt wird 
     private static Point DrawCircle(List<string> texts)
     {
         AnsiConsole.Clear();
@@ -304,7 +305,8 @@ public static class UiHandler
         }
         return new Point((int) Math.Round(centerX, MidpointRounding.AwayFromZero), (int) Math.Round(centerY, MidpointRounding.AwayFromZero));
     }
-
+    
+    // Text wird Zeichen für Zeichen geschrieben, anstatt direkt aufzutauchen
     private static void RenderText(string text, int delayBetweenChar = 47)
     {
         var lines = text.Split('\n');
@@ -321,7 +323,8 @@ public static class UiHandler
                 AnsiConsole.Write("\n");
         }
     }
-
+    
+    // Stellt Text Zeichen für Zeichen um einen Mittelpunkt herum dar
     private static void RenderTextAroundPoint(Point point, string text, int delayBetweenChar = 47, int delayBetweenLines = 200)
     {
         var lines = text.Split('\n');
@@ -339,6 +342,7 @@ public static class UiHandler
 
     public static readonly Dictionary<string, List<string>> UiMessagesWaitList = new Dictionary<string, List<string>>();
     
+    // Sendet eine UI-Nachricht an andere Spieler und wartet bis diese dargestellt wurde
     public static void RpcUiMessage(UiMessageType type, string data = "", List<string>? receivers = null)
     {
         var messageId = Guid.NewGuid().ToString();
@@ -364,8 +368,10 @@ public static class UiHandler
         }
         
         while (UiMessagesWaitList[messageId].Count > 0) { }
+        UiMessagesWaitList.Remove(messageId);
     }
     
+    // Zeigt eine UI-Nachricht nur dem lokalen Spieler an
     public static void LocalUiMessage(UiMessageType type, string data = "", string messageId = "")
     {
         switch (type)
@@ -401,6 +407,7 @@ public static class UiHandler
                 new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.UiMessageFinished, messageId)));
     }
     
+    // Zeichnet die Namen der Spieler in den berechneten Kreis 
     private static void DrawPlayerNameCircle(string centerText = "", List<string>? playerNames = null)
     {
         var point = DrawCircle(playerNames ?? PlayersToPlayerNames(PlayerData.Players));
@@ -489,6 +496,7 @@ public static class UiHandler
                 Program.KeepAlive = true;
                 NetworkingManager.Instance.InitialConnectionSuccessful = true;
                 GameManager.ChangeState(GameManager.GameState.InLobby);
+                GameManager.ChangeInGameState(GameManager.InGameStateType.NoGame);
             }
             else
             {

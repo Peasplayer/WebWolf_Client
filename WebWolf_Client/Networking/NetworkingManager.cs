@@ -183,6 +183,7 @@ public class NetworkingManager
                         Task.Run(() =>
                         {
                             GameManager.ChangeState(GameManager.GameState.NoGame);
+                            GameManager.ChangeInGameState(GameManager.InGameStateType.NoGame);
                             UiHandler.DisplayEndScreen(data.Value);
                         });
                         break;
