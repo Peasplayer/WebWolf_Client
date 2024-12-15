@@ -123,7 +123,8 @@ public class GameManager
             if (player.IsHost)
             {
                 // ... wird das Spiel abgebrochen ...
-                NetworkingManager.Instance.Client.Stop(WebSocketCloseStatus.NormalClosure, "Programm ended");
+                NetworkingManager.DisconnectionReason = "Der Host hat das Spiel verlassen!";
+                NetworkingManager.Instance.Client.Stop(WebSocketCloseStatus.NormalClosure, "Host left the game");
                 AnsiConsole.Write(new Rule("Der Host hat das Spiel verlassen!"));
                 return;
             }
