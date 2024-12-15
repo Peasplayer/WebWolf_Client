@@ -8,5 +8,6 @@ public enum RoleType : uint
     Seherin,
     Hexe,
     Jäger,
-    Amor
+    Amor,
+    Dieb
 }

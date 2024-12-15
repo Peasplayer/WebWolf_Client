@@ -687,7 +687,8 @@ public static class UiHandler
                                     "\n\nDie [green] Seherin [/] ist Teil des Dorfes. Sie kann jede Nacht die Identität eines Spielers erfahren." + 
                                     "\n\nDie [green] Hexe [/] ist Teil des Dorfes. Sie kann einmalig das Opfer der Werwölfe heilen und einmalig einen Spieler ihrer Wahl töten." +
                                     "\n\nDer [green] Jäger [/] ist Teil des Dorfes. Wenn er stirbt kann er eine Person mit in den tot reisen." +
-                                    "\n\nDer [green] Amor [/] ist Teil des Dorfes. Er kann einmalig zwei Spieler verlieben. Stirbt einer der beiden, stirbt der andere auch.").Header("[green] Rollen [/]"));
+                                    "\n\nDer [green] Amor [/] ist Teil des Dorfes. Er kann einmalig zwei Spieler verlieben. Stirbt einer der beiden, stirbt der andere auch." + 
+                                    "\n\nDer [green] Dieb [/] ist Teil des Dorfes. Am Anfang des Spieles wählt der Dieb eine anderen Spieler, aus dessen Rolle er klaut. Die Person, von dem der Dieb geklaut hat, wird zu einem Dorfbewohner.").Header("[green] Rollen [/]"));
         
         AnsiConsole.MarkupLine("\nDrücke [orange3] ENTER [/], um zurück zum Hauptmenü zu gelangen.");
         Console.ReadLine();

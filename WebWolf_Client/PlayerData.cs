@@ -51,10 +51,9 @@ public class PlayerData
     // Setzt server-weit die Rolle des Spielers
     public void RpcSetRole(RoleType role)
     {
-        if (LocalPlayer.IsHost)
-            NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
-                new BroadcastPaket(NetworkingManager.Instance.CurrentId, PaketDataType.SetRole, 
-                    "{'Id': '" + Id + "', 'Role': '" + role + "'}")));
+        NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
+            new BroadcastPaket(NetworkingManager.Instance.CurrentId, PaketDataType.SetRole, 
+                "{'Id': '" + Id + "', 'Role': '" + role + "'}")));
     }
 
     public void SetRole(RoleType role)

@@ -10,6 +10,7 @@ public class RoleManager
     // Liste aller Rollen
     public static List<Role> Roles { get; set; } = new List<Role>()
     {
+        new Dieb(),
         new Amor(),
         new Seherin(),
         new Werwolf(),
@@ -69,14 +70,15 @@ public class RoleManager
         }
 
         // ... und anschließend den Spielern zufällig zugewiesen
-        foreach (var player in availablePlayers)
+        foreach (var player in availablePlayers.ToList())
         {
-            if (availablePlayers.Count == 0)
+            if (availableRoles.Count == 0)
                 continue;
 
             int randomIndex = random.Next(availableRoles.Count);
             player.RpcSetRole(availableRoles[randomIndex]);
             availableRoles.RemoveAt(randomIndex);
+            availablePlayers.Remove(player);
         }
 
         // Alle restlichen Spieler werden Dorfbewohner

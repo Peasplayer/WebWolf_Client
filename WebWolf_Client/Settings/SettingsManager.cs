@@ -15,13 +15,15 @@ public class SettingsManager
     public static NumberSetting HexeMaxAmount { get; } = new NumberSetting("Maximale Anzahl Hexen", "RoleHexeAmount", 1, 0, 20);
     public static NumberSetting JägerMaxAmount { get; } = new NumberSetting("Maximale Anzahl Jäger", "RoleJägerAmount", 1, 0, 20);
     public static BooleanSetting AmorEnabled { get; } = new BooleanSetting("Amor aktivieren", "AmorEnabled", true);
+    public static BooleanSetting DiebEnabled { get; } = new BooleanSetting("Dieb aktivieren", "DiebEnabled", false);
 
     public static FloatSetting HexeActionDuration { get; } = new FloatSetting("Dauer Hexe Aktionen (in Sekunden)", "HexeActionDuration", 18,10,30);
     public static FloatSetting JägerActionDuration { get; } = new FloatSetting("Dauer Jäger Aktion (in Sekunden)", "JägerActionDuration", 8,8,30);
     public static FloatSetting WerwolfActionDuration { get; } = new FloatSetting("Dauer Werwolf Aktion (in Sekunden)", "WerwolfActionDuration", 20,20,50);
-    public static FloatSetting SeherinActionDuration { get; } = new FloatSetting("Dauer Seherin Aktion (in Sekunden)", "SeherinActionDuration", 8, 8, 30);
+    public static FloatSetting SeherinActionDuration { get; } = new FloatSetting("Dauer Seherin Aktion (in Sekunden)", "SeherinActionDuration", 8, 10, 30);
     public static FloatSetting AmorActionDuration { get; } = new FloatSetting("Dauer Amor Aktion (in Sekunden)", "AmorActionDuration", 10, 10, 30);
     public static BooleanSetting AmorMultipleCouples { get; } = new BooleanSetting("Armor kann mehrere Paare nacheinander verlieben", "AmorMultipleCouples", false);
+    public static FloatSetting DiebActionDuration { get; } = new FloatSetting("Dauer Dieb Aktion (in Sekunden)", "DiebActionDuration", 8, 10, 30);
     
     public static BooleanSetting RevealRoleOnDeath { get; } = new BooleanSetting("Rolle bei Tod anzeigen", "RevealRoleOnDeath", true);
 
@@ -40,6 +42,8 @@ public class SettingsManager
                 return JägerActionDuration.Value;
             case RoleType.Amor:
                 return AmorActionDuration.Value;
+            case RoleType.Dieb:
+                return DiebActionDuration.Value;
             default:
                 return 10;
         }
@@ -60,6 +64,8 @@ public class SettingsManager
                 return JägerMaxAmount.Value;
             case RoleType.Amor:
                 return AmorEnabled.Value ? 1 : 0;
+            case RoleType.Dieb:
+                return DiebEnabled.Value ? 1 : 0;
             default:
                 return 0;
         }
