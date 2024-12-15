@@ -7,6 +7,8 @@ public enum PacketDataType : uint
     Leave,
     SyncLobby,
     SetHost,
+    Disconnect,
+    
     StartGame,
     EndGame,
     StartNightOrDay,

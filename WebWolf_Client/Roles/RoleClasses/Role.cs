@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json;
 using WebWolf_Client.Networking;
+using WebWolf_Client.Settings;
 using WebWolf_Client.Ui;
 
 namespace WebWolf_Client.Roles.RoleClasses;
@@ -11,6 +12,8 @@ public abstract class Role
     public abstract bool IsAliveRole { get; }
 
     protected bool IsActionCancelled { get; private set; }
+    
+    public int MaxAmount => SettingsManager.GetMaxAmount(RoleType);
 
     public void PrepareCancelAction()
     {

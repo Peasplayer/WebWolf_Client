@@ -1,4 +1,5 @@
 ﻿using Spectre.Console;
+using WebWolf_Client.Settings;
 using WebWolf_Client.Ui;
 
 namespace WebWolf_Client.Roles.RoleClasses;
@@ -42,7 +43,14 @@ public class Jäger : Role
                 "Mit seinem letzten Atemzug erschießt der Jäger...\n"
                 + markedAsDead.First().Name + "!");
             Task.Delay(1000).Wait();
+            // Rolle wird offenbart, sofern dies eingestellt ist
+            if (SettingsManager.RevealRoleOnDeath.Value)
+            {
+                UiHandler.RpcUiMessage(UiMessageType.DrawPlayerNameCircle,
+                    string.Join("\n", markedAsDead.ConvertAll(player => $"{player.Name} war {player.Role}")));
+                Task.Delay(2000).Wait();
+            }
+            PlayerData.RpcProcessDeaths();
         }
-        PlayerData.RpcProcessDeaths();
     }
 }

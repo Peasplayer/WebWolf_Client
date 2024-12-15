@@ -4,6 +4,7 @@ using Spectre.Console;
 using WebWolf_Client.Networking;
 using WebWolf_Client.Roles;
 using WebWolf_Client.Roles.RoleClasses;
+using WebWolf_Client.Settings;
 using WebWolf_Client.Ui;
 
 namespace WebWolf_Client;
@@ -58,12 +59,16 @@ public class GameManager
                     "Die Sonne geht auf...\nBei der morgendlichen Dorfversammlung fällt euch auf, dass...\n" 
                     + (markedAsDead.Count > 0 ? string.Join(", ", markedAsDead.ConvertAll(player => player.Name)) + 
                                                 " gestorben " + (markedAsDead.Count > 1 ? "sind!": "ist!") : "alle wohlauf sind!"));
-                
                 PlayerData.RpcProcessDeaths();
                 Task.Delay(1000).Wait();
-                // Rolle wird offenbart
-                UiHandler.RpcUiMessage(UiMessageType.DrawPlayerNameCircle, string.Join("\n", markedAsDead.ConvertAll(player => $"{player.Name} war {player.Role}")));
-                Task.Delay(2000).Wait();
+                
+                // Rolle wird offenbart, sofern dies eingestellt ist
+                if (SettingsManager.RevealRoleOnDeath.Value)
+                {
+                    UiHandler.RpcUiMessage(UiMessageType.DrawPlayerNameCircle,
+                        string.Join("\n", markedAsDead.ConvertAll(player => $"{player.Name} war {player.Role}")));
+                    Task.Delay(2000).Wait();
+                }
                 
                 // Falls ein Jäger gestorben ist, wird seine Aktion ausgeführt
                 if (markedAsDead.Find(player => player.Role == RoleType.Jäger) != null)
@@ -295,9 +300,13 @@ public class GameManager
                 player.RpcMarkAsDead();
                 PlayerData.RpcProcessDeaths();
                 
-                // Seine Rolle wird offenbart
-                UiHandler.RpcUiMessage(UiMessageType.DrawPlayerNameCircle, $"{player.Name} war {player.Role}!");
-                Task.Delay(1000).Wait();
+                // Rolle wird offenbart, sofern dies eingestellt ist
+                if (SettingsManager.RevealRoleOnDeath.Value)
+                {
+                    // Seine Rolle wird offenbart
+                    UiHandler.RpcUiMessage(UiMessageType.DrawPlayerNameCircle, $"{player.Name} war {player.Role}!");
+                    Task.Delay(1000).Wait();
+                }
             }
         }
     }

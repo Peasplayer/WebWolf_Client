@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using WebWolf_Client.Networking;
 using WebWolf_Client.Roles.RoleClasses;
+using WebWolf_Client.Settings;
 
 namespace WebWolf_Client.Roles;
 
@@ -19,6 +20,7 @@ public class RoleManager
         return Roles.First(x => x.RoleType == roleType);
     }
     
+    // Erstellt eine Liste mir den Spieler und ihren Rollen
     public static List<PlayerData> GetPlayersWithRole(RoleType role)
     {
         var list = new List<PlayerData>();
@@ -31,21 +33,21 @@ public class RoleManager
         return list;
     }
 
+    // Gibt jeder Person eine zufällige Rolle
     public static void AssignRoles()
     {
         Random random = new Random();
         var availablePlayers = new List<PlayerData>(PlayerData.Players);
-        var roleSettings = RoleSetting.RoleSettings;
 
-        foreach (var roleSetting in roleSettings)
+        foreach (var role in Roles)
         {
-            for (int i = 0; i < roleSetting.MaxAmount; i++)
+            for (int i = 0; i < role.MaxAmount; i++)
             {
                 if (availablePlayers.Count == 0)
                     continue;
 
                 int randomIndex = random.Next(availablePlayers.Count);
-                availablePlayers[randomIndex].RpcSetRole(roleSetting.Role);
+                availablePlayers[randomIndex].RpcSetRole(role.RoleType);
                 availablePlayers.RemoveAt(randomIndex);
             }
             
@@ -81,7 +83,9 @@ public class RoleManager
         NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
             new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.CallRole, JsonConvert.SerializeObject(new Packets.SimpleRole(role)))));
 
-        var timer = Task.Delay(14000);
+        // Setzt die Zeit, die jede Rolle für seine Aktionen, hat auf die eingestellt Zeit 
+        float actionDuration = SettingsManager.GetRoleActionDuration(role.ToString());
+        var timer = Task.Delay((int) actionDuration * 1000);
         while (WaitingForRole.Count > 0)
         {
             if (timer.IsCompleted)

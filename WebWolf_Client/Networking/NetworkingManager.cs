@@ -3,6 +3,7 @@ using Newtonsoft.Json;
 using Websocket.Client;
 using WebWolf_Client.Roles;
 using WebWolf_Client.Roles.RoleClasses;
+using WebWolf_Client.Settings;
 using WebWolf_Client.Ui;
 
 namespace WebWolf_Client.Networking;
@@ -12,11 +13,12 @@ public class NetworkingManager
     public static NetworkingManager Instance;
 
     public static string InitialName;
+    public static string DisconnectionReason;
 
     public static bool ConnectToServer()
     {
         var net = new NetworkingManager();
-        net.StartConnection(Program.URL);
+        net.StartConnection($"ws://{SettingsManager.ServerIp.Value}:8443");
         
         return net.Client.IsRunning;
     }
@@ -28,6 +30,7 @@ public class NetworkingManager
     private NetworkingManager()
     {
         Instance = this;
+        DisconnectionReason = "";
     }
 
     public void StartConnection(string url)
@@ -53,7 +56,7 @@ public class NetworkingManager
             if (!InitialConnectionSuccessful)
                 return;
             
-            Program.DebugLog("Connection closed: " + info.Type);
+            Program.DebugLog("Connection closed: " + JsonConvert.SerializeObject(info));
             
             UiHandler.DisplayDisconnectionScreen(info);
 
@@ -156,6 +159,14 @@ public class NetworkingManager
                         PlayerData.GetPlayer(packetData.Id).SetHost();
                         if (GameManager.State == GameManager.GameState.InLobby)
                             Task.Run(UiHandler.DisplayLobby);
+                        break;
+                    }
+                    case PacketDataType.Disconnect:
+                    {
+                        Program.DebugLog("Received Disconnect-packet");
+
+                        DisconnectionReason = normalPacket.Data;
+                        Client.Stop(WebSocketCloseStatus.NormalClosure, normalPacket.Data);
                         break;
                     }
                     // Das Spiel wird vom Host gestartet

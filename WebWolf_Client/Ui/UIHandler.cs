@@ -7,6 +7,7 @@ using Spectre.Console;
 using Websocket.Client;
 using WebWolf_Client.Networking;
 using WebWolf_Client.Roles;
+using WebWolf_Client.Settings;
 using Color = Spectre.Console.Color;
 
 namespace WebWolf_Client.Ui;
@@ -18,7 +19,6 @@ public static class UiHandler
         Console.Clear();
         RenderCard(RoleType.Werwolf, "WebWolf");
         
-        AnsiConsole.WriteLine("");
         var openSettings = UiHandler.Prompt(new SelectionPrompt<string>()
             .Title("Möchtest du das Spiel starten oder die Einstellungen öffnen?")
             .AddChoices("Spiel starten", "Einstellungen"));
@@ -45,11 +45,24 @@ public static class UiHandler
                         }));
                 ClearConsoleLine(2);
                 AnsiConsole.MarkupLine("\nHallo, [green]{0}[/]!", NetworkingManager.InitialName);
+                
+                if (NetworkingManager.ConnectToServer())
+                {
+                    Program.KeepAlive = true;
+                    NetworkingManager.Instance.InitialConnectionSuccessful = true;
+                    GameManager.ChangeState(GameManager.GameState.InLobby);
+                }
+                else
+                {
+                    UiHandler.DisplayDisconnectionScreen(new DisconnectionInfo(DisconnectionType.Error, 
+                        WebSocketCloseStatus.EndpointUnavailable, "Connection failed", 
+                        null, null));
+                }
                 break;
-            /*case "Einstellungen":
-                DisplaySettings*/
+            case "Einstellungen":
+                DisplaySettings();
+                break;
         }
-        
     }
 
     private static bool _AskedQuestion;
@@ -202,7 +215,8 @@ public static class UiHandler
     {
         AnsiConsole.Clear();
         AnsiConsole.Write(new FigletText(":/").Centered().Color(Color.Red));
-        AnsiConsole.Write(new Markup("[red]Verbindung verloren![/]").Centered());
+        AnsiConsole.Write(new Markup("[red]Verbindung verloren!" + (NetworkingManager.DisconnectionReason == "" ? 
+            "" : $"\nGrund: {NetworkingManager.DisconnectionReason}") + "[/]").Centered());
         var prompt = new ConfirmationPrompt("Details?")
         {
             DefaultValue = false,
@@ -213,10 +227,31 @@ public static class UiHandler
         {
             UiHandler.ClearConsoleLine();
             AnsiConsole.MarkupLine($"[red]Type: {info.Type}[/]");
-            AnsiConsole.MarkupLine($"[red]Status: {info.CloseStatus}[/]");
-            AnsiConsole.MarkupLine($"[red]Description: {info.CloseStatusDescription}[/]");
-            AnsiConsole.MarkupLine($"[red]Exception: {info.Exception?.Message}[/]");
+            if (info.CloseStatus != null)
+                AnsiConsole.MarkupLine($"[red]Status: {info.CloseStatus}[/]");
+            if (info.CloseStatusDescription != null)
+                AnsiConsole.MarkupLine($"[red]Description: {info.CloseStatusDescription}[/]");
+            if (info.Exception != null)
+                AnsiConsole.MarkupLine($"[red]Exception: {info.Exception.Message}[/]");
         }
+        // Fragt den Benutzer, ob er zum Hauptmenü zurückkehren möchte
+        var backToMainMenu = new ConfirmationPrompt("Möchtest du zurück zum Hauptmenü?")
+        {
+            DefaultValue = true,
+            ShowDefaultValue = true
+        };
+
+        var backToMainMenuResult = UiHandler.Prompt(backToMainMenu);
+        if (backToMainMenuResult)
+        {
+            AnsiConsole.Clear();
+            UiHandler.DisplayMainMenu();   
+        }
+        else
+        {
+            AnsiConsole.WriteLine("Nicht zurückkehren");
+        }
+
     }
 
     private static void DisplayCardReveal()
@@ -457,5 +492,95 @@ public static class UiHandler
 
             return result;
         });
+    }
+
+    public static void DisplaySettings()
+    {
+        AnsiConsole.Clear();
+        AnsiConsole.Markup("[blue]Einstellungen[/]");
+
+        var prompt = new SelectionPrompt<string>()
+            .Title("Wähle eine Option:");
+        prompt.AddChoice("[[Zurück zum Hauptmenü]]");
+        foreach (var generalSetting in SettingsManager.AllSettings)
+        {
+            switch (generalSetting)
+            {
+                case NumberSetting setting:
+                    prompt.AddChoice($"{setting.Name}: {setting.Value}");
+                    break;
+                case FloatSetting setting:
+                    prompt.AddChoice($"{setting.Name}: {setting.Value.ToString("0.0")}");
+                    break;
+                case BooleanSetting setting:
+                    prompt.AddChoice($"{setting.Name}: {(setting.Value ? "Ja" : "Nein")}");
+                    break;
+                case StringSetting setting:
+                    prompt.AddChoice($"{setting.Name}: {setting.Value}");
+                    break;
+            }
+        }
+        var option = UiHandler.Prompt(prompt);
+        if (option == "[[Zurück zum Hauptmenü]]")
+        {
+            DisplayMainMenu();
+            return;
+        }
+        
+        var settingName = option.Split(": ")[0];
+        var selectedSetting = SettingsManager.AllSettings.Find(s => s.Name == settingName);
+        if (selectedSetting == null)
+        {
+            DisplaySettings();
+            return;
+        }
+        
+        switch (selectedSetting)
+        {
+            case NumberSetting setting:
+                var numberPrompt = new TextPrompt<int>($"Gib einen neuen Wert für \"{setting.Name}\" ein:")
+                    .DefaultValue(setting.Value)
+                    .ValidationErrorMessage("Ungültige Eingabe!")
+                    .Validate(n =>
+                    {
+                        if (n < setting.Min || n > setting.Max)
+                            return ValidationResult.Error($"Der Wert muss zwischen {setting.Min} und {setting.Max} liegen!");
+                        return ValidationResult.Success();
+                    });
+                var newNumber = UiHandler.Prompt(numberPrompt);
+                setting.SetValue(newNumber);
+                break;
+            case FloatSetting setting:
+                var floatPrompt = new TextPrompt<float>($"Gib einen neuen Wert für \"{setting.Name}\" ein:")
+                    .DefaultValue(setting.Value)
+                    .ValidationErrorMessage("Ungültige Eingabe!")
+                    .Validate(n =>
+                    {
+                        if (n < setting.Min || n > setting.Max)
+                            return ValidationResult.Error($"Der Wert muss zwischen {setting.Min} und {setting.Max} liegen!");
+                        return ValidationResult.Success();
+                    });
+                var newFloat = UiHandler.Prompt(floatPrompt);
+                setting.SetValue(newFloat);
+                break;
+            case BooleanSetting setting:
+                var boolPrompt = new ConfirmationPrompt($"Möchtest du \"{setting.Name}\" {(setting.Value ? "deaktivieren" : "aktivieren")}?")
+                {
+                    InvalidChoiceMessage = "Ungültige Eingabe!",
+                    DefaultValue = setting.Value
+                };
+                var newBool = UiHandler.Prompt(boolPrompt);
+                setting.SetValue(newBool);
+                break;
+            case StringSetting setting:
+                var stringPrompt = new TextPrompt<string>($"Gib einen neuen Wert für \"{setting.Name}\" ein:")
+                    .DefaultValue(setting.Value)
+                    .ValidationErrorMessage("Ungültige Eingabe!");
+                var newString = UiHandler.Prompt(stringPrompt);
+                setting.SetValue(newString);
+                break;
+        }
+
+        DisplaySettings();
     }
 }

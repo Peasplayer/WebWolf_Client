@@ -1,6 +1,5 @@
 ﻿using System.Diagnostics;
 using System.Net.WebSockets;
-using Websocket.Client;
 using WebWolf_Client.Networking;
 using WebWolf_Client.Ui;
 
@@ -8,7 +7,6 @@ namespace WebWolf_Client;
 
 class Program
 {
-    public const string URL = "ws://77.90.17.73:8443";
 
     public static List<string> DebugNames = new List<string>()
         { "Horst", "Dieter", "Wilfred", "Lennox", "Jannis", "Dreschner", "Martinez", "Benutzer", "Helmut", "Günther", "Tom" };
@@ -22,18 +20,6 @@ class Program
         AppDomain.CurrentDomain.UnhandledException += (sender, eventArgs) => DebugLog($"Unhandled Exception: {eventArgs.ExceptionObject}");
         
         UiHandler.DisplayMainMenu();
-        if (NetworkingManager.ConnectToServer())
-        {
-            KeepAlive = true;
-            NetworkingManager.Instance.InitialConnectionSuccessful = true;
-            GameManager.ChangeState(GameManager.GameState.InLobby);
-        }
-        else
-        {
-            UiHandler.DisplayDisconnectionScreen(new DisconnectionInfo(DisconnectionType.Error, 
-                WebSocketCloseStatus.EndpointUnavailable, "Connection failed", 
-                null, null));
-        }
 
         while (KeepAlive) { }
 
