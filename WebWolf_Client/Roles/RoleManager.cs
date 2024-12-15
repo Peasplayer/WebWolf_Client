@@ -40,28 +40,47 @@ public class RoleManager
         Random random = new Random();
         var availablePlayers = new List<PlayerData>(PlayerData.Players);
 
-        foreach (var role in Roles)
+        // Als Erstes werden die Werwölfe zugewiesen
+        var werwolf = (Werwolf) GetRole(RoleType.Werwolf);
+        // Es wird maximal 1 Werwolf auf 4 Spieler zugewiesen, es sei denn das eingestellte Limit ist kleiner
+        for (int i = 0; i < Math.Min(werwolf.MaxAmount, PlayerData.Players.Count / 4); i++)
         {
-            for (int i = 0; i < role.MaxAmount; i++)
-            {
-                if (availablePlayers.Count == 0)
-                    continue;
+            if (availablePlayers.Count == 0)
+                continue;
 
-                int randomIndex = random.Next(availablePlayers.Count);
-                availablePlayers[randomIndex].RpcSetRole(role.RoleType);
-                availablePlayers.RemoveAt(randomIndex);
-            }
-            
+            int randomIndex = random.Next(availablePlayers.Count);
+            availablePlayers[randomIndex].RpcSetRole(RoleType.Werwolf);
+            availablePlayers.RemoveAt(randomIndex);
         }
 
+        // Danach werden alle Rollen * Limit in eine Liste geschrieben...
+        var availableRoles = new List<RoleType>();
+        foreach (var role in Roles)
+        {
+            if (role.RoleType == RoleType.Werwolf)
+                continue;
+
+            for (int i = 0; i < role.MaxAmount; i++)
+            {
+                availableRoles.Add(role.RoleType);
+            }
+        }
+
+        // ... und anschließend den Spielern zufällig zugewiesen
+        foreach (var player in availablePlayers)
+        {
+            if (availablePlayers.Count == 0)
+                continue;
+
+            int randomIndex = random.Next(availableRoles.Count);
+            player.RpcSetRole(availableRoles[randomIndex]);
+            availableRoles.RemoveAt(randomIndex);
+        }
+
+        // Alle restlichen Spieler werden Dorfbewohner
         foreach (var player in availablePlayers)
         {
             player.RpcSetRole(RoleType.Dorfbewohner);
-        }
-        
-        foreach (var player in PlayerData.Players)
-        {
-            Program.DebugLog($"{player.Name}: {player.Role}");
         }
     }
     
