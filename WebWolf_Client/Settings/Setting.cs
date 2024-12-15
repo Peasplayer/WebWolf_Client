@@ -2,6 +2,7 @@
 
 public abstract class Setting
 {
+    // Bekommt die ID und den Namen von der Einstellung
     public string Name { get; }
     public string Id { get; }
     
@@ -10,6 +11,7 @@ public abstract class Setting
         Name = name;
         Id = id;
         
+        // Fügt die Einstellung zur Liste hinzu
         SettingsManager.AllSettings.Add(this);
     }
 }

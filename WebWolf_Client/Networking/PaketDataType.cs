@@ -1,14 +1,15 @@
 namespace WebWolf_Client.Networking;
 
-public enum PacketDataType : uint
+public enum PaketDataType : uint
 {
-    // Spiel-System
+    // System
     Join,
     Leave,
     SyncLobby,
     SetHost,
     Disconnect,
     
+    // Spiel
     StartGame,
     EndGame,
     StartNightOrDay,
@@ -33,7 +34,6 @@ public enum PacketDataType : uint
     VillageVoteStart,
     VillageVoteVoted,
     VillageVoteCanceled,
-    VillageVoteAnnounceVictim,
     
     // UI
     UiMessage,

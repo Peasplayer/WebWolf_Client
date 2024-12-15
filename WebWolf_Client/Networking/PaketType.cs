@@ -1,6 +1,7 @@
 namespace WebWolf_Client.Networking;
 
-public enum PacketType : uint
+// Art des Pakets
+public enum PaketType : uint
 {
     Handshake = 0,
     Broadcast = 1,

@@ -7,6 +7,7 @@ namespace WebWolf_Client.Roles;
 
 public class RoleManager
 {
+    // Liste aller Rollen
     public static List<Role> Roles { get; set; } = new List<Role>()
     {
         new Amor(),
@@ -16,6 +17,7 @@ public class RoleManager
         new Jäger()
     };
 
+    // Sucht das erste objekt mir derselben Rolle
     public static Role GetRole(RoleType roleType)
     {
         return Roles.First(x => x.RoleType == roleType);
@@ -91,6 +93,8 @@ public class RoleManager
     {
         var roleObj = RoleManager.GetRole(role);
         WaitingForRole.Clear();
+        
+        // Je nachdem wer alles aufgerufen werden soll, wird zur Warteliste hinzugefügt
         if (target != null)
             WaitingForRole.Add(target.Id, 0);
         else
@@ -102,20 +106,22 @@ public class RoleManager
             }
         }
 
+        // Falls niemand aufgerufen werden soll, wird der Vorgang abgebrochen
         if (WaitingForRole.Count == 0)
             return;
 
+        // Die, die aufgrufen werden sollen, werden aufgerufen
         if (target != null)
         {
             NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
-                new SendToPacket(NetworkingManager.Instance.CurrentId, PacketDataType.CallRole,
-                    JsonConvert.SerializeObject(new Packets.SimpleRole(role)), target.Id)));
+                new SendToPaket(NetworkingManager.Instance.CurrentId, PaketDataType.CallRole,
+                    JsonConvert.SerializeObject(new Pakets.SimpleRole(role)), target.Id)));
         }
         else
         {
             NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
-                new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.CallRole,
-                    JsonConvert.SerializeObject(new Packets.SimpleRole(role)))));
+                new BroadcastPaket(NetworkingManager.Instance.CurrentId, PaketDataType.CallRole,
+                    JsonConvert.SerializeObject(new Pakets.SimpleRole(role)))));
         }
 
         // Setzt die Zeit, die jede Rolle für seine Aktionen, hat auf die eingestellt Zeit 
@@ -131,8 +137,8 @@ public class RoleManager
                     if (pair.Value == 0)
                     {
                         NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
-                            new SendToPacket(NetworkingManager.Instance.CurrentId, PacketDataType.RoleCanceled,
-                                JsonConvert.SerializeObject(new Packets.SimpleRole(role)), pair.Key)));
+                            new SendToPaket(NetworkingManager.Instance.CurrentId, PaketDataType.RoleCanceled,
+                                JsonConvert.SerializeObject(new Pakets.SimpleRole(role)), pair.Key)));
                         WaitingForRole[pair.Key] = 1;
                     }
                 }
@@ -148,7 +154,7 @@ public class RoleManager
         }
         
         while (WaitingForRole.ContainsValue(1)){}
-        Console.WriteLine("Bazinga!");
-        Program.DebugLog("Bazinga!");
+        
+        Program.DebugLog("Role is done");
     }
 }

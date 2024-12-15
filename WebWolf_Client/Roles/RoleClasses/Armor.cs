@@ -9,6 +9,7 @@ public class Amor : Role
     public override RoleType RoleType => RoleType.Amor;
     public override bool IsAliveRole => true;
 
+    // Ob der Amor in diesem Spiel bereits ein Paar verliebt hat
     private bool CreatedCouple;
 
     public override void InitRole()
@@ -19,8 +20,10 @@ public class Amor : Role
     protected override void StartAction()
     {
         var playersInLove = PlayerData.Players.FindAll(player => player is { InLove: true, IsAlive: true });
+        // Falls noch kein Paar in dem Spiel verliebt wurde oder das Paar nicht mehr lebt (falls mehrere Paare erlaubt sind)...
         if (!CreatedCouple || (SettingsManager.AmorMultipleCouples.Value && playersInLove.Count > 0))
         {
+            // ... werden neue Verliebte ausgewählt
             UiHandler.LocalUiMessage(UiMessageType.DrawPlayerNameCircle, "Der Amor (Du) erwacht...");
             if (CancelCheck(() => UiHandler.StartPlayerPrompt(() =>
                     {
@@ -43,13 +46,16 @@ public class Amor : Role
                                 "2. Verliebter:",
                                 lover2 =>
                                 {
+                                    // User-Input endet, also wird dies signalisiert
                                     if (CancelCheck(RpcFinishedAction)) return;
 
+                                    // Die beiden Spieler werden verliebt
                                     UiHandler.LocalUiMessage(UiMessageType.RenderText, $"{lover1.Name} und {lover2.Name} sind nun ineinander verliebt.");
                                     CreatedCouple = true;
                                     lover1.RpcSetInLove();
                                     lover2.RpcSetInLove();
                                     Task.Delay(1000).Wait();
+                                    
                                     // Aktion für den Armor endet
                                     UiHandler.LocalUiMessage(UiMessageType.DisplayInGameMenu);
                                     
@@ -70,6 +76,7 @@ public class Amor : Role
                                 }))) return;
                     }))) return;
         }
+        // Ansonsten wird keine Aktion ausgeführt
         else
         {
             RpcFinishedAction();

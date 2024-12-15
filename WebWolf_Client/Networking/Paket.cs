@@ -1,11 +1,12 @@
 namespace WebWolf_Client.Networking;
 
-public class Packet
+// Basispaket-Klasse
+public class Paket
 {
     public string Sender;
-    public PacketType Type;
+    public PaketType Type;
     
-    public Packet(string sender)
+    public Paket(string sender)
     {
         Sender = sender;
     }

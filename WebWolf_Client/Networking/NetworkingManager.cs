@@ -10,11 +10,15 @@ namespace WebWolf_Client.Networking;
 
 public class NetworkingManager
 {
+    // Globale Instanze von NetworkingManager
     public static NetworkingManager Instance;
 
+    // Name der sich vom Client gewünscht wurde
     public static string InitialName;
+    // Begründung für geschlossene Verbindung, wenn der Client sie selbst geschlossen hat
     public static string DisconnectionReason;
 
+    // Verbindung zum Server herstellen mit angegebener IP
     public static bool ConnectToServer()
     {
         var net = new NetworkingManager();
@@ -23,17 +27,21 @@ public class NetworkingManager
         return net.Client.IsRunning;
     }
     
+    // Aktuelle ID des Clients
     public string CurrentId { get; private set; }
+    // Websocket-Client-Obejkt
     public WebsocketClient Client { get; private set; }
+    // Ob die Verbindung erfolgreich hergestellt wurde
     public bool InitialConnectionSuccessful;
-    public bool ArePlayersSynced { get; private set; }
     private NetworkingManager()
     {
+        // Setzt die globale Instanz
         Instance = this;
         DisconnectionReason = "";
     }
 
-    public void StartConnection(string url)
+    // Verbindung zum Server herstellen
+    private void StartConnection(string url)
     {
         var factory = new Func<ClientWebSocket>(() => new ClientWebSocket
         {
@@ -43,311 +51,356 @@ public class NetworkingManager
             }
         });
         Client = new WebsocketClient(new Uri(url), factory);
+        // Neu-Verbindungsversuche deaktivieren
         Client.IsReconnectionEnabled = false;
         Client.ErrorReconnectTimeout = null;
         Client.ReconnectTimeout = TimeSpan.FromSeconds(5);
+        // Nachrichten empfangen und an den Listener weiterleiten
         Client.MessageReceived.Subscribe(msg =>
         {
+            // Nachricht wird nur verwendet, wenn es Text ist
             if (msg.MessageType == WebSocketMessageType.Text && msg.Text != null)
                 OnMessage(msg.Text);
         });
+        // Falls die Verbindung nach dem ersten erfolgreichen Verbinden geschlossen wird ...
         Client.DisconnectionHappened.Subscribe(info =>
         {
             if (!InitialConnectionSuccessful)
                 return;
             
+            // ... wird der Disconnect-Dialog angezeigt
             Program.DebugLog("Connection closed: " + JsonConvert.SerializeObject(info));
-            
             UiHandler.DisplayDisconnectionScreen(info);
-
-            Program.KeepAlive = false;
         });
         
+        // Wartet bis die Verbindung hergestellt wurde oder fehlschlägt
         Client.Start().Wait();
     }
 
+    // Listener für Nachrichten
     private void OnMessage(string message)
     {
         Program.DebugLog("Server says: " + message);
-            
-        var packet = JsonConvert.DeserializeObject<Packet>(message);
-        if (packet == null)
+        
+        // Nachricht wird in ein Paket umgewandelt
+        var paket = JsonConvert.DeserializeObject<Paket>(message);
+        if (paket == null)
             return;
         
-        if (packet.Type == PacketType.Handshake)
+        // Falls das Paket ein Handshake-Paket ist...
+        if (paket.Type == PaketType.Handshake)
         {
-            var handshake = JsonConvert.DeserializeObject<HandshakePacket>(message);
+            var handshake = JsonConvert.DeserializeObject<HandshakePaket>(message);
             if (handshake == null)
                 return;
             
+            // ... wird die ID des Clients gesetzt ...
             CurrentId = handshake.Name;
             Program.DebugLog("ID: " + CurrentId);
-            Client.Send(JsonConvert.SerializeObject(new HandshakePacket(CurrentId, InitialName)));
+            // ... und der gewünschte Name geantwortet
+            Client.Send(JsonConvert.SerializeObject(new HandshakePaket(CurrentId, InitialName)));
         }
         else
         {
-            var normalPacket = JsonConvert.DeserializeObject<NormalPacket>(message);
-            if (normalPacket == null)
+            // Falls das Paket kein Handshake-Paket ist, wird es an den Paket-Handler weitergeleitet
+            var normalPaket = JsonConvert.DeserializeObject<NormalPaket>(message);
+            if (normalPaket == null)
                 return;
 
             try
             {
-                switch (normalPacket.DataType)
+                switch (normalPaket.DataType)
                 {
-                    case PacketDataType.Join:
+                    // Spieler tritt dem Spiel bei
+                    case PaketDataType.Join:
                     {
-                        Program.DebugLog("Received Join-packet");
+                        Program.DebugLog("Received Join-paket");
 
-                        var joinPacketData =
-                            JsonConvert.DeserializeObject<Packets.PlayerDataPattern>(normalPacket.Data);
-                        if (joinPacketData == null)
+                        var joinPaketData =
+                            JsonConvert.DeserializeObject<Pakets.PlayerDataPattern>(normalPaket.Data);
+                        if (joinPaketData == null)
                             return;
 
-                        if (joinPacketData.Id == PlayerData.LocalPlayer.Id)
+                        if (joinPaketData.Id == PlayerData.LocalPlayer.Id)
                         {
                             Program.DebugLog("Local player is already joined");
                             return;
                         }
 
-                        Task.Run(() => GameManager.OnPlayerJoin(joinPacketData));
+                        // Lifecycle-Methode wird aufgerufen
+                        Task.Run(() => GameManager.OnPlayerJoin(joinPaketData));
                         break;
                     }
-                    case PacketDataType.SyncLobby:
+                    // Spielerdaten werden synchronisiert
+                    case PaketDataType.SyncLobby:
                     {
-                        PlayerData.Players.Clear();
-                        var syncPacketData = JsonConvert.DeserializeObject<Packets.SyncLobbyPacket>(normalPacket.Data);
-                        if (syncPacketData == null)
+                        var syncPaketData = JsonConvert.DeserializeObject<Pakets.SyncLobbyPaket>(normalPaket.Data);
+                        if (syncPaketData == null)
                             return;
 
-                        foreach (var playerDataPattern in syncPacketData.Players)
+                        // Spieler-Objekte werden neu erstellt
+                        PlayerData.Players.Clear();
+                        foreach (var playerDataPattern in syncPaketData.Players)
                         {
                             PlayerData.Players.Add(new PlayerData(playerDataPattern.Name, playerDataPattern.Id, playerDataPattern.IsHost));
                         }
                         
                         Program.DebugLog("Players after sync: " + JsonConvert.SerializeObject(PlayerData.Players));
-                        ArePlayersSynced = true;
+                        // Lobby wird neu gerendert
                         if (GameManager.State == GameManager.GameState.InLobby)
                             Task.Run(UiHandler.DisplayLobby);
-
                         break;
                     }
-                    case PacketDataType.Leave:
+                    // Spieler verlässt das Spiel
+                    case PaketDataType.Leave:
                     {
-                        Program.DebugLog("Received Leave-packet");
+                        Program.DebugLog("Received Leave-paket");
 
-                        var packetData = JsonConvert.DeserializeObject<Packets.PlayerDataPattern>(normalPacket.Data);
-                        if (packetData == null)
+                        var paketData = JsonConvert.DeserializeObject<Pakets.PlayerDataPattern>(normalPaket.Data);
+                        if (paketData == null)
                             return;
 
-                        if (packetData.Id == PlayerData.LocalPlayer.Id)
+                        if (paketData.Id == PlayerData.LocalPlayer.Id)
                         {
                             Program.DebugLog("Local player can't leave!!!");
                             return;
                         }
 
-                        GameManager.OnPlayerLeave(packetData);
+                        // Lifecycle-Methode wird aufgerufen
+                        GameManager.OnPlayerLeave(paketData);
                         break;
                     }
-                    case PacketDataType.SetHost:
+                    // Host wird festgelegt
+                    case PaketDataType.SetHost:
                     {
-                        Program.DebugLog("Received SetHost-packet");
+                        Program.DebugLog("Received SetHost-paket");
 
-                        var packetData = JsonConvert.DeserializeObject<Packets.PlayerDataPattern>(normalPacket.Data);
-                        if (packetData == null)
+                        var paketData = JsonConvert.DeserializeObject<Pakets.PlayerDataPattern>(normalPaket.Data);
+                        if (paketData == null)
                             return;
                         
-                        PlayerData.GetPlayer(packetData.Id).SetHost();
+                        PlayerData.GetPlayer(paketData.Id).SetHost();
+                        // Lobby wird neu gerendert
                         if (GameManager.State == GameManager.GameState.InLobby)
                             Task.Run(UiHandler.DisplayLobby);
                         break;
                     }
-                    case PacketDataType.Disconnect:
+                    // Verbindung soll getrennt werden
+                    case PaketDataType.Disconnect:
                     {
-                        Program.DebugLog("Received Disconnect-packet");
+                        Program.DebugLog("Received Disconnect-paket");
 
-                        DisconnectionReason = normalPacket.Data;
-                        Client.Stop(WebSocketCloseStatus.NormalClosure, normalPacket.Data);
+                        // Der Grund des Servers wird gespeichert
+                        DisconnectionReason = normalPaket.Data;
+                        Client.Stop(WebSocketCloseStatus.NormalClosure, normalPaket.Data);
                         break;
                     }
                     // Das Spiel wird vom Host gestartet
-                    case PacketDataType.StartGame:
+                    case PaketDataType.StartGame:
                     {
-                        Program.DebugLog("Received StartGame-packet");
+                        Program.DebugLog("Received StartGame-paket");
                         Task.Run(() => GameManager.ChangeState(GameManager.GameState.InGame));
                         break;
                     }
-                    case PacketDataType.EndGame:
+                    // Das Spiel wird beendet
+                    case PaketDataType.EndGame:
                     {
-                        Program.DebugLog("Received EndGame-packet");
-                        var data = JsonConvert.DeserializeObject<Packets.SimpleBoolean>(normalPacket.Data);
+                        Program.DebugLog("Received EndGame-paket");
+                        var data = JsonConvert.DeserializeObject<Pakets.SimpleBoolean>(normalPaket.Data);
                         Task.Run(() =>
                         {
+                            // Es wird in den Zustand "Kein Spiel" gewechselt
                             GameManager.ChangeState(GameManager.GameState.NoGame);
                             GameManager.ChangeInGameState(GameManager.InGameStateType.NoGame);
+                            // Endbildschirm wird angezeigt
                             UiHandler.DisplayEndScreen(data.Value);
                         });
                         break;
                     }
-                    case PacketDataType.SetRole:
+                    // Rolle eines Spielers wird festgelegt
+                    case PaketDataType.SetRole:
                     {
-                        Program.DebugLog("Received SetRole-packet");
-                        var data = JsonConvert.DeserializeObject<Packets.SetRolePattern>(normalPacket.Data);
+                        Program.DebugLog("Received SetRole-paket");
+                        var data = JsonConvert.DeserializeObject<Pakets.SetRolePattern>(normalPaket.Data);
                         PlayerData.GetPlayer(data.Id).SetRole(data.Role);
                         Program.DebugLog($"Player {PlayerData.GetPlayer(data.Id).Name} is a {data.Role}");
                         break;
                     }
-                    case PacketDataType.StartNightOrDay:
+                    // Nacht bzw. Tag wird gestartet
+                    case PaketDataType.StartNightOrDay:
                     {
-                        Program.DebugLog("Received StartNightOrDay-packet");
-                        var data = JsonConvert.DeserializeObject<Packets.SimpleBoolean>(normalPacket.Data);
+                        Program.DebugLog("Received StartNightOrDay-paket");
+                        var data = JsonConvert.DeserializeObject<Pakets.SimpleBoolean>(normalPaket.Data);
                         Program.DebugLog($"It is now {(data.Value ? "Night" : "Day")}");
                         Task.Run(() => GameManager.ChangeInGameState(data.Value ? GameManager.InGameStateType.Night : GameManager.InGameStateType.Day));
                         break;
                     }
-                    case PacketDataType.CallRole:
+                    // Rolle wird aufgerufen
+                    case PaketDataType.CallRole:
                     {
-                        Program.DebugLog("Received CallRole-packet");
-                        var data = JsonConvert.DeserializeObject<Packets.SimpleRole>(normalPacket.Data);
+                        Program.DebugLog("Received CallRole-paket");
+                        var data = JsonConvert.DeserializeObject<Pakets.SimpleRole>(normalPaket.Data);
                         Program.DebugLog($"Role {data.Role} is being called");
                         var role = RoleManager.GetRole(data.Role);
+                        // Rollen-Aktion wird zurückgesetzt
                         role.ResetAction();
-                        if (PlayerData.LocalPlayer.Role == data.Role && (PlayerData.LocalPlayer.IsAlive || data.Role == RoleType.Jäger))
+                        // Falls der lokale Spieler die Rolle hat und lebendig ist oder es eine Rolle ist, die auch bei toten Spielern ausgeführt wird ...
+                        if (PlayerData.LocalPlayer.Role == data.Role && (PlayerData.LocalPlayer.IsAlive || !role.IsAliveRole))
                         {
+                            // ... wird die Aktion vorbereitet
                             Task.Run(role.PrepareAction);
                         }
                         break;
                     }
-                    case PacketDataType.RoleFinished:
+                    // Rollen-Aktion wurde abgeschlossen
+                    case PaketDataType.RoleFinished:
                     {
-                        Program.DebugLog("Received RoleFinished-packet");
+                        Program.DebugLog("Received RoleFinished-paket");
                         if (!PlayerData.LocalPlayer.IsHost)
                             return;
                         
-                        var data = JsonConvert.DeserializeObject<Packets.SimpleRole>(normalPacket.Data);
-                        var currentWaitState = RoleManager.WaitingForRole[normalPacket.Sender];
+                        var data = JsonConvert.DeserializeObject<Pakets.SimpleRole>(normalPaket.Data);
+                        var currentWaitState = RoleManager.WaitingForRole[normalPaket.Sender];
                         if (currentWaitState == 0)
                         {
-                            Program.DebugLog($"{normalPacket.Sender} completed role {data.Role} action (no UI)");
-                            RoleManager.WaitingForRole[normalPacket.Sender] = 1;
+                            // Nur der User-Input ist abgeschlossen
+                            Program.DebugLog($"{normalPaket.Sender} completed role {data.Role} action (no UI)");
+                            RoleManager.WaitingForRole[normalPaket.Sender] = 1;
                         }
                         else
                         {
-                            Program.DebugLog($"{normalPacket.Sender} finished role {data.Role}");
-                            RoleManager.WaitingForRole.Remove(normalPacket.Sender);
+                            // Aktion ist komplett beendet
+                            Program.DebugLog($"{normalPaket.Sender} finished role {data.Role}");
+                            RoleManager.WaitingForRole.Remove(normalPaket.Sender);
                         }
                         break;
                     }
-                    case PacketDataType.RoleCanceled:
+                    // Rollen-Aktion wurde abgegbrochen
+                    case PaketDataType.RoleCanceled:
                     {
-                        Program.DebugLog("Received RoleCanceled-packet");
-                        var data = JsonConvert.DeserializeObject<Packets.SimpleRole>(normalPacket.Data);
+                        Program.DebugLog("Received RoleCanceled-paket");
+                        var data = JsonConvert.DeserializeObject<Pakets.SimpleRole>(normalPaket.Data);
                         Program.DebugLog($"{data.Role}'s action was canceled");
+                        // Falls der lokale Spieler die Rolle hat wird ein möglicher Dialog abgebrochen
                         if (PlayerData.LocalPlayer.Role == data.Role)
                         {
                             UiHandler.CancelPrompt();
                         }
+                        // Rollen-Aktion wird abgebrochen
                         RoleManager.GetRole(data.Role).PrepareCancelAction();
                         break;
                     }
                     // Stimme eines Werwolfes wurde gesendet
-                    case PacketDataType.WerwolfVote:
+                    case PaketDataType.WerwolfVote:
                     {
-                        var data = JsonConvert.DeserializeObject<Packets.SimplePlayerId>(normalPacket.Data);
+                        var data = JsonConvert.DeserializeObject<Pakets.SimplePlayerId>(normalPaket.Data);
                         var role = (Werwolf) RoleManager.GetRole(RoleType.Werwolf);
-                        role.Votes[normalPacket.Sender] = data.Id;
+                        // Stimme wird gespeichert
+                        role.Votes[normalPaket.Sender] = data.Id;
+                        // Dialog wird neu angezeigt, falls der lokale Spieler Werwolf ist und es noch ausstehende Stimmen gibt
                         if (PlayerData.LocalPlayer.Role == RoleType.Werwolf && role.Votes.Count < PlayerData.Players.Count(player => player is { Role: RoleType.Werwolf, IsAlive: true }))
                             Task.Run(role.SelectVictim);
 
+                        // Der Host überprüft, ob die Abstimmung beendet ist
                         if (PlayerData.LocalPlayer.IsHost)
                         {
                             role.CalculateVictim();
                         }
                         break;
                     }
-                    // Den Werwölfen wird ihr Opfer angekündigt
-                    case PacketDataType.WerwolfAnnounceVictim:
+                    // Den lebendigen Werwölfen wird ihr Opfer angekündigt
+                    case PaketDataType.WerwolfAnnounceVictim:
                     {
-                        var data = JsonConvert.DeserializeObject<Packets.SimplePlayerId>(normalPacket.Data);
+                        var data = JsonConvert.DeserializeObject<Pakets.SimplePlayerId>(normalPaket.Data);
                         Werwolf.LastVicitmId = data.Id;
                         if (PlayerData.LocalPlayer.Role == RoleType.Werwolf && PlayerData.LocalPlayer.IsAlive)
                             ((Werwolf) RoleManager.GetRole(RoleType.Werwolf)).AnnounceVictim(data.Id);
                         break;
                     }
-                    case PacketDataType.PlayerMarkedAsDead:
+                    // Spieler wird als tot markiert
+                    case PaketDataType.PlayerMarkedAsDead:
                     {
-                        var data = JsonConvert.DeserializeObject<Packets.SimplePlayerId>(normalPacket.Data);
+                        var data = JsonConvert.DeserializeObject<Pakets.SimplePlayerId>(normalPaket.Data);
                         var player = PlayerData.GetPlayer(data.Id);
                         player.MarkAsDead(true);
                         Program.DebugLog($"{player.Name} is marked as dead");
                         break;
                     }
-                    case PacketDataType.PlayerUnmarkedAsDead:
+                    // Als-Tot-Markierung eines Spielers wird aufgehoben
+                    case PaketDataType.PlayerUnmarkedAsDead:
                     {
-                        var data = JsonConvert.DeserializeObject<Packets.SimplePlayerId>(normalPacket.Data);
+                        var data = JsonConvert.DeserializeObject<Pakets.SimplePlayerId>(normalPaket.Data);
                         PlayerData.GetPlayer(data.Id).MarkAsDead(false);
                         break;
                     }
-                    case PacketDataType.PlayerProcessDeaths:
+                    // Als-Tot-Markierte Spieler werden auf tot gesetzt
+                    case PaketDataType.PlayerProcessDeaths:
                     {
                         PlayerData.ProcessDeaths();
                         break;
                     }
-                    case PacketDataType.PlayerInLove:
+                    // Spieler wird als verliebt markiert
+                    case PaketDataType.PlayerInLove:
                     {
-                        var data = JsonConvert.DeserializeObject<Packets.SimplePlayerId>(normalPacket.Data);
+                        var data = JsonConvert.DeserializeObject<Pakets.SimplePlayerId>(normalPaket.Data);
                         PlayerData.GetPlayer(data.Id).SetInLove();
                         break;
                     }
-                    case PacketDataType.VillageVoteStart:
+                    // Abstimmung des Dorfes wird gestartet
+                    case PaketDataType.VillageVoteStart:
                     {
-                        Program.DebugLog("Received VillageVoteStart-packet");
+                        Program.DebugLog("Received VillageVoteStart-paket");
                         GameManager.Votes.Clear();
+                        // Falls der Spieler lebt, darf er abstimmen
                         GameManager.HasVoted = !PlayerData.LocalPlayer.IsAlive;
                         GameManager.VoteIsStarted = true;
+                        // Abstimmung wird angezeigt
                         Task.Run(UiHandler.DisplayVillageVote);
                         break;
                     }
-                    case PacketDataType.VillageVoteVoted:
+                    // Stimme eines Spielers bei der Dorf-Abstimmung wird gesendet
+                    case PaketDataType.VillageVoteVoted:
                     {
-                        Program.DebugLog("Received VillageVoteStart-packet");
-                        var data = JsonConvert.DeserializeObject<Packets.SimplePlayerId>(normalPacket.Data);
-                        GameManager.Votes[normalPacket.Sender] = data.Id;
+                        Program.DebugLog("Received VillageVoteStart-paket");
+                        var data = JsonConvert.DeserializeObject<Pakets.SimplePlayerId>(normalPaket.Data);
+                        // Stimme wird gespeichert
+                        GameManager.Votes[normalPaket.Sender] = data.Id;
+                        // Abstimmung wird neu angezeigt
                         Task.Run(UiHandler.DisplayVillageVote);
                         break;
                     }
-                    case PacketDataType.VillageVoteCanceled:
+                    // Dorf-Abstimmung wird abgebrochen bzw. beendet
+                    case PaketDataType.VillageVoteCanceled:
                     {
-                        Program.DebugLog("Received VillageVoteCanceled-packet");
+                        Program.DebugLog("Received VillageVoteCanceled-paket");
                         UiHandler.CancelPrompt();
                         GameManager.VoteIsStarted = false;
                         break;
                     }
-                    case PacketDataType.VillageVoteAnnounceVictim:
+                    // UI-Nachricht wird angezeigt
+                    case PaketDataType.UiMessage:
                     {
-                        Program.DebugLog("Received VillageVoteAnnounceVictim-packet");
-                        break;
-                    }
-                    case PacketDataType.UiMessage:
-                    {
-                        Program.DebugLog("Received UiMessage-packet");
-                        var data = JsonConvert.DeserializeObject<Packets.UiMessage>(normalPacket.Data);
+                        Program.DebugLog("Received UiMessage-paket");
+                        var data = JsonConvert.DeserializeObject<Pakets.UiMessage>(normalPaket.Data);
                         UiHandler.LocalUiMessage(data.Type, data.Message, data.Id);
                         break;
                     }
-                    case PacketDataType.UiMessageFinished:
+                    // UI-Nachricht wurde fertig angezeigt
+                    case PaketDataType.UiMessageFinished:
                     {
-                        Program.DebugLog("Received UiMessageFinished-packet");
-                        if (UiHandler.UiMessagesWaitList.TryGetValue(normalPacket.Data, out var value))
-                            value.Remove(normalPacket.Sender);
+                        Program.DebugLog("Received UiMessageFinished-paket");
+                        if (UiHandler.UiMessagesWaitList.TryGetValue(normalPaket.Data, out var value))
+                            value.Remove(normalPaket.Sender);
                         break;
                     }
                     default:
                     {
-                        Program.DebugLog("Data: " + normalPacket.Data);
+                        Program.DebugLog("Data: " + normalPaket.Data);
                         break;
                     }
                 }
             }
+            // Fehler werden im Log gespeichert
             catch (Exception e)
             {
                 Program.DebugLog($"Unhandled Exception: {e}");

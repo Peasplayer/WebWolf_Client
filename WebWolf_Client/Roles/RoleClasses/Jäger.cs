@@ -10,6 +10,7 @@ public class Jäger : Role
 
     protected override void StartAction()
     {
+        // Jäger darf ein Opfer aussuchen
         if (CancelCheck(() => UiHandler.StartPlayerPrompt(() =>
                 {
                     AnsiConsole.Clear();
@@ -31,10 +32,13 @@ public class Jäger : Role
                 }))) return;
     }
 
+    // Jäger wird aufgerufen
     public static void CallJäger(PlayerData jäger)
     {
+        // Nur der eine Jäger wird aufgerufen
         RoleManager.RpcCallRole(RoleType.Jäger, jäger);
         var markedAsDead = PlayerData.Players.FindAll(player => player.IsMarkedAsDead);
+        // Falls er wen erschossen hat, wird dies angezeigt
         if (markedAsDead.Count > 0)
         {
             UiHandler.RpcUiMessage(UiMessageType.DrawPlayerNameCircle,

@@ -14,6 +14,7 @@ public class GameManager
     public static GameState State { get; private set; } = GameState.NoGame;
     public static InGameStateType InGameState { get; private set; } = InGameStateType.NoGame;
 
+    // Setzt den GameState auf InLobby oder InGame je nachdem wo man ist
     public static void ChangeState(GameState newState)
     {
         State = newState;
@@ -23,6 +24,7 @@ public class GameManager
         }
         else if (newState == GameState.InGame)
         {
+            // Lifecycle-Methode wird aufgerufen
             OnGameStart();
         }
     }
@@ -94,12 +96,12 @@ public class GameManager
         }
     }
 
-    public static void OnPlayerJoin(Packets.PlayerDataPattern data)
+    public static void OnPlayerJoin(Pakets.PlayerDataPattern data)
     {
         Program.DebugLog($"Player {data.Name} joined with ID {data.Id}");
         PlayerData.Players.Add(new PlayerData(data.Name, data.Id));
 
-        // Falls ein Spieler vor dem Spiel-Start das Spiel verlässt ...
+        // Falls ein Spieler vor dem Spiel-Start das Spiel betritt ...
         if (GameManager.State == GameState.InLobby)
         {
             // ... wird die Anzeige erneuert
@@ -107,7 +109,7 @@ public class GameManager
         }
     }
     
-    public static void OnPlayerLeave(Packets.PlayerDataPattern data)
+    public static void OnPlayerLeave(Pakets.PlayerDataPattern data)
     {
         var player = PlayerData.GetPlayer(data.Id); 
         Program.DebugLog($"Player {player.Name} left with ID {player.Id}");
@@ -216,11 +218,12 @@ public class GameManager
             RpcStartNightOrDay(true);
         }
     }
-
+    
+    // Tag oder Nacht wird bei allen Clients gestartet
     public static void RpcStartNightOrDay(bool isNight)
     {
         NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
-            new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.StartNightOrDay, JsonConvert.SerializeObject(new Packets.SimpleBoolean(isNight)))));
+            new BroadcastPaket(NetworkingManager.Instance.CurrentId, PaketDataType.StartNightOrDay, JsonConvert.SerializeObject(new Pakets.SimpleBoolean(isNight)))));
     }
     
     // Verzeichnis der Stimmen
@@ -232,7 +235,7 @@ public class GameManager
     public static void RpcStartVillageVote()
     {
         NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
-            new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.VillageVoteStart, "")));
+            new BroadcastPaket(NetworkingManager.Instance.CurrentId, PaketDataType.VillageVoteStart, "")));
         Votes.Clear();
         
         // Timer wird gestartet
@@ -248,8 +251,8 @@ public class GameManager
         
         // Falls die Abstimmung noch läuft, wird sie abgebrochen
         NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
-            new BroadcastPacket(NetworkingManager.Instance.CurrentId,
-                PacketDataType.VillageVoteCanceled, "")));
+            new BroadcastPaket(NetworkingManager.Instance.CurrentId,
+                PaketDataType.VillageVoteCanceled, "")));
         
         // Ergebnis wird berechnet
         var calcVotes = new Dictionary<string, int>();
@@ -265,35 +268,11 @@ public class GameManager
         
         // Das Ergebnis der Abstimmung wird verkündet
         if (calcVotes.Count == 0 || (calcVotes.Count > 1 && calcVotes.Values.ToArray()[0] == calcVotes.Values.ToArray()[1]))
-            VoteAnnounceVictim(null);
+            UiHandler.RpcVoteAnnounceVictim(null);
         else
-            VoteAnnounceVictim(PlayerData.GetPlayer(calcVotes.First().Key));
+            UiHandler.RpcVoteAnnounceVictim(PlayerData.GetPlayer(calcVotes.First().Key));
     }
 
-    public static void VoteAnnounceVictim(PlayerData? player)
-    {
-        if (player == null)
-        {
-            // Es wurde kein Opfer gefunden
-            UiHandler.RpcUiMessage(UiMessageType.DrawPlayerNameCircle,
-                $"Die Dorfbewohner haben entschieden!\nNiemand wurde zum Tode verurteilt!");
-        }
-        else
-        {
-            // Es wurde ein Opfer gefunden
-            UiHandler.RpcUiMessage(UiMessageType.DrawPlayerNameCircle,
-                $"Die Dorfbewohner haben entschieden!\n{player.Name} wurde zum Tode verurteilt!");
-            Task.Delay(1000).Wait();
-            
-            if (PlayerData.LocalPlayer.IsHost)
-            {
-                // Host setzt das Opfer auf Tod
-                player.RpcMarkAsDead();
-                PlayerData.RpcProcessDeaths();
-            }
-        }
-    }
-    
     public enum GameState
     {
         NoGame,
@@ -310,8 +289,6 @@ public class GameManager
 
     private static bool CheckGameEnd()
     {
-        return false;
-        
         // Zählt die lebenden Spieler nach Rollen
         int werwolves = PlayerData.Players.Count(player => player.IsAlive && player.Role == RoleType.Werwolf);
         int villagers = PlayerData.Players.Count(player => player.IsAlive && player.Role != RoleType.Werwolf);

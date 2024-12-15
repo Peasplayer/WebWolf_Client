@@ -9,6 +9,7 @@ public class BooleanSetting : Setting
         Value = SettingsManager.GetBooleanValue(id) ?? defaultValue;
     }
 
+    // Setzt den Wert, der vom Benutzer eingegeben wurde
     public void SetValue(bool value)
     {
         Value = value;

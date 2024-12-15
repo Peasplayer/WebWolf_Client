@@ -9,9 +9,6 @@ namespace WebWolf_Client;
 class Program
 {
 
-    public static List<string> DebugNames = new List<string>()
-        { "Horst", "Dieter", "Wilfred", "Lennox", "Jannis", "Dreschner", "Martinez", "Benutzer", "Helmut", "Günther", "Tom" };
-    
     public static bool KeepAlive;
     
     static void Main(string[] args)
@@ -38,7 +35,7 @@ class Program
     {
         try
         {
-            File.AppendAllText($"./debug-{Process.GetCurrentProcess().Id}.log", $"[{DateTime.Now}] {log}\n");
+            File.AppendAllText(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + $"\\WebWolf\\debug-{Process.GetCurrentProcess().Id}.log", $"[{DateTime.Now}] {log}\n");
         }
         catch (Exception _)
         {

@@ -13,6 +13,7 @@ public class FloatSetting : Setting
         Max = max;
     }
 
+    // Setzt den Wert, der vom Benutzer eingegeben wurde
     public void SetValue(float value)
     {
         if (value < Min || value > Max)

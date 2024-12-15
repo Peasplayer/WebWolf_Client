@@ -53,7 +53,7 @@ public class PlayerData
     {
         if (LocalPlayer.IsHost)
             NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
-                new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.SetRole, 
+                new BroadcastPaket(NetworkingManager.Instance.CurrentId, PaketDataType.SetRole, 
                     "{'Id': '" + Id + "', 'Role': '" + role + "'}")));
     }
 
@@ -66,16 +66,16 @@ public class PlayerData
     public void RpcMarkAsDead()
     {
         NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
-            new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.PlayerMarkedAsDead, 
-                JsonConvert.SerializeObject(new Packets.SimplePlayerId(Id)))));
+            new BroadcastPaket(NetworkingManager.Instance.CurrentId, PaketDataType.PlayerMarkedAsDead, 
+                JsonConvert.SerializeObject(new Pakets.SimplePlayerId(Id)))));
     }
     
     // Setzt die Eigenschaft bei allen Clients
     public void RpcUnmarkAsDead()
     {
         NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
-            new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.PlayerUnmarkedAsDead, 
-                JsonConvert.SerializeObject(new Packets.SimplePlayerId(Id)))));
+            new BroadcastPaket(NetworkingManager.Instance.CurrentId, PaketDataType.PlayerUnmarkedAsDead, 
+                JsonConvert.SerializeObject(new Pakets.SimplePlayerId(Id)))));
     }
     
     public void MarkAsDead(bool value)
@@ -90,7 +90,7 @@ public class PlayerData
         {
             var markedAsDead = PlayerData.Players.FindAll(player => player.IsMarkedAsDead);
             NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
-                new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.PlayerProcessDeaths, "")));
+                new BroadcastPaket(NetworkingManager.Instance.CurrentId, PaketDataType.PlayerProcessDeaths, "")));
             
             Task.Delay(1000).Wait();
             
@@ -146,12 +146,12 @@ public class PlayerData
         }
     }
 
-    // Setzt bei den beiden verliebten Clients das sie dies sind
+    // Setzt bei allen Clients, dass dieser Spieler verliebt ist
     public void RpcSetInLove()
     {
         NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
-            new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.PlayerInLove, 
-                JsonConvert.SerializeObject(new Packets.SimplePlayerId(Id)))));
+            new BroadcastPaket(NetworkingManager.Instance.CurrentId, PaketDataType.PlayerInLove, 
+                JsonConvert.SerializeObject(new Pakets.SimplePlayerId(Id)))));
     }
     
     public void SetInLove()

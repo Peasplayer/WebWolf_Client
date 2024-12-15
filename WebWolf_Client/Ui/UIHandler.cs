@@ -14,6 +14,7 @@ namespace WebWolf_Client.Ui;
 
 public static class UiHandler
 {
+    // Zeigt das Hauptmenü an
     public static void DisplayMainMenu()
     {
         Console.Clear();
@@ -54,8 +55,11 @@ public static class UiHandler
                 // Client verbindet sich mit dem Server
                 if (NetworkingManager.ConnectToServer())
                 {
+                    // Programm wird am Leben erhalten
                     Program.KeepAlive = true;
+                    // Verbindung wird als erfolgreich markiert
                     NetworkingManager.Instance.InitialConnectionSuccessful = true;
+                    // Die passenden Zustände werden gesetzt
                     GameManager.ChangeState(GameManager.GameState.InLobby);
                     GameManager.ChangeInGameState(GameManager.InGameStateType.NoGame);
                 }
@@ -78,6 +82,7 @@ public static class UiHandler
         }
     }
 
+    // Variable ob die Start-Frage schon gestellt wurde
     private static bool _AskedQuestion;
 
     public static void ResetLobby()
@@ -99,10 +104,11 @@ public static class UiHandler
         }
         
         AnsiConsole.Write(table);
-        // Wenn der Spieler der Host ist und 5 Spieler vorhanden sind, kann er das Spiel starten
-        if (PlayerData.LocalPlayer.IsHost && PlayerData.Players.Count >= 3)
+        // Wenn der Spieler der Host ist und 4 Spieler insgesamt /vorhanden sind, kann er das Spiel starten
+        if (PlayerData.LocalPlayer.IsHost && PlayerData.Players.Count >= 4)
         {
             AnsiConsole.Write("Drücke ENTER um das Spiel zu starten!");
+            // Falls die Frage noch nicht gestellt wurde, wird sie gestellt
             if (!_AskedQuestion)
             {
                 _AskedQuestion = true;
@@ -113,6 +119,7 @@ public static class UiHandler
                 var result = UiHandler.Prompt(prompt);
                 Program.DebugLog("Start? " + result);
                 
+                // Je nach Ergebnis wird das Spiel gestartet
                 if (!result)
                 {
                     _AskedQuestion = false;
@@ -121,7 +128,7 @@ public static class UiHandler
                 }
                 
                 NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
-                    new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.StartGame, "")));
+                    new BroadcastPaket(NetworkingManager.Instance.CurrentId, PaketDataType.StartGame, "")));
             }
             else
                 AnsiConsole.Write(" ");
@@ -130,6 +137,7 @@ public static class UiHandler
 
     private static CancellationTokenSource? _promptCancel;
     private static Task? _task;
+    // Prompt-Methode, die den vorherigen Prompt abbricht und einen neu startet
     public static T Prompt<T>(IPrompt<T> prompt)
     {
         try
@@ -153,6 +161,7 @@ public static class UiHandler
         }
     }
 
+    // Bricht den aktuellen Prompt ab
     public static void CancelPrompt()
     {
         if (_promptCancel != null && _task != null)
@@ -193,6 +202,7 @@ public static class UiHandler
         finishingAction.Invoke(result);
     }
 
+    // Wiederholt die letzte Spieler-Auswahl
     public static void ReRunPlayerPrompt()
     {
         if (CurrentPlayerPrompt != null)
@@ -262,10 +272,10 @@ public static class UiHandler
         }
         else
         {
-            AnsiConsole.WriteLine("Nicht zurückkehren");
+            Program.KeepAlive = false;
         }
-
     }
+    
     // Am Anfang des Spieles wird jedem Spieler seine Rolle angezeigt
     private static void DisplayCardReveal()
     {
@@ -273,7 +283,8 @@ public static class UiHandler
         RenderCard(PlayerData.LocalPlayer.Role,PlayerData.LocalPlayer.Role.ToString());
         Thread.Sleep(5 * 1000);
     }
-    // Mach einen Kreis in dem die Namen der Spieler angezigt wird 
+    
+    // Mach einen Kreis in dem die Namen der Spieler angezeigt wird 
     private static Point DrawCircle(List<string> texts)
     {
         AnsiConsole.Clear();
@@ -324,12 +335,13 @@ public static class UiHandler
         }
     }
     
-    // Stellt Text Zeichen für Zeichen um einen Mittelpunkt herum dar
+    // Stellt Text um einen Mittelpunkt herum dar ...
     private static void RenderTextAroundPoint(Point point, string text, bool instant, int delayBetweenChar = 47, int delayBetweenLines = 200)
     {
         var lines = text.Split('\n');
         if (instant)
         {
+            // ... ohne Verzögerung
             for (var i = 0; i < lines.Length; i++)
             {
                 var line = lines[i];
@@ -341,6 +353,7 @@ public static class UiHandler
             return;
         }
         
+        // ... Zeichen für Zeichen 
         for (var i = 0; i < lines.Length; i++)
         {
             var line = lines[i];
@@ -357,29 +370,36 @@ public static class UiHandler
     // Sendet eine UI-Nachricht an andere Spieler und wartet bis diese dargestellt wurde
     public static void RpcUiMessage(UiMessageType type, string data = "", List<string>? receivers = null)
     {
+        // Erstellt eine eindeutige ID für die Nachricht ...
         var messageId = Guid.NewGuid().ToString();
+        // ... und eine Warteliste
         UiMessagesWaitList.Add(messageId, new List<string>());
+        // Alle Empfänger werden zur Warteliste hinzugefügt
         foreach (var playerId in receivers ?? PlayerData.Players.ConvertAll(player => player.Id))
         {
             UiMessagesWaitList[messageId].Add(playerId);
         }
+        
+        // Nachricht wird an die Empfänger gesendet
         if (receivers == null)
         {
             NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
-                new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.UiMessage,
-                    JsonConvert.SerializeObject(new Packets.UiMessage(type, data, messageId)))));
+                new BroadcastPaket(NetworkingManager.Instance.CurrentId, PaketDataType.UiMessage,
+                    JsonConvert.SerializeObject(new Pakets.UiMessage(type, data, messageId)))));
         }
         else
         {
             foreach (var receiver in receivers)
             {
                 NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
-                    new SendToPacket(NetworkingManager.Instance.CurrentId, PacketDataType.UiMessage,
-                        JsonConvert.SerializeObject(new Packets.UiMessage(type, data, messageId)), receiver)));
+                    new SendToPaket(NetworkingManager.Instance.CurrentId, PaketDataType.UiMessage,
+                        JsonConvert.SerializeObject(new Pakets.UiMessage(type, data, messageId)), receiver)));
             }
         }
         
+        // Wartet bis alle Empfänger die Nachricht dargestellt haben
         while (UiMessagesWaitList[messageId].Count > 0) { }
+        // Entfernt die Nachricht aus der Warteliste
         UiMessagesWaitList.Remove(messageId);
     }
     
@@ -394,9 +414,10 @@ public static class UiHandler
                 break;
             case UiMessageType.DrawPlayerNameCircle:
                 IsInInGameMenu = false;
+                // Falls zusätzliche Daten da sind, werden diese genutzt
                 if (data.StartsWith("{") && data.EndsWith("}"))
                 {
-                    var specialData = JsonConvert.DeserializeObject<UiMessageClasses.SpecialPlayerCircle>(data);
+                    var specialData = JsonConvert.DeserializeObject<SpecialPlayerCircle>(data);
                     DrawPlayerNameCircle(specialData.CenterText, false, specialData.PlayerNames);
                 }
                 else
@@ -421,7 +442,7 @@ public static class UiHandler
         
         if (messageId != "")
             NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
-                new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.UiMessageFinished, messageId)));
+                new BroadcastPaket(NetworkingManager.Instance.CurrentId, PaketDataType.UiMessageFinished, messageId)));
     }
     
     // Zeichnet die Namen der Spieler in den berechneten Kreis 
@@ -432,16 +453,17 @@ public static class UiHandler
             RenderTextAroundPoint(point, centerText, instant);
     }
 
+    // Variable ob das InGame-Menü angezeigt wird
     public static bool IsInInGameMenu { get; set; }
     
-    // Zeigt alle Spiler in einem Kreis und den Text "Alle Dorfbewohner schlafen (zzZ)"
+    // Zeigt alle Spieler in einem Kreis und den passenden Text in der Mitte an
     public static void DisplayInGameMenu(bool instant)
     {
         IsInInGameMenu = true;
-        DrawPlayerNameCircle(GameManager.InGameState == GameManager.InGameStateType.Night ? "Alle Dorfbewohner schlafen (zzZ)" : "Tag", instant);
+        DrawPlayerNameCircle(GameManager.InGameState == GameManager.InGameStateType.Night ? "Alle Dorfbewohner schlafen (zzZ)" : "", instant);
     }
     
-    // Alle Spiler stimmen Tagsüber ab wen sie lynchen wollen
+    // Alle Spieler stimmen tagsüber ab, wen sie lynchen wollen
     public static void DisplayVillageVote()
     {
         UiHandler.CancelPrompt();
@@ -489,7 +511,7 @@ public static class UiHandler
             // Sendet dem Host welcher Spieler gewählt wurde
             GameManager.HasVoted = true;
             NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
-                new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.VillageVoteVoted, JsonConvert.SerializeObject(new Packets.SimplePlayerId(votedPlayerId))))); 
+                new BroadcastPaket(NetworkingManager.Instance.CurrentId, PaketDataType.VillageVoteVoted, JsonConvert.SerializeObject(new Pakets.SimplePlayerId(votedPlayerId))))); 
         }
         else
         {
@@ -500,7 +522,7 @@ public static class UiHandler
         }
     }
 
-    // zeigt den end screen in dem Angezeigt wird welches Team gewonnen hat 
+    // Zeigt den End-Screen, in dem angezeigt wird, welches Team gewonnen hat 
     public static void DisplayEndScreen(bool villageWon)
     {
         AnsiConsole.Clear();
@@ -512,8 +534,7 @@ public static class UiHandler
         NetworkingManager.Instance.Client.Stop(WebSocketCloseStatus.NormalClosure, "Game ended");
         Task.Delay(1000).Wait();
         
-        // Fragt ob die Spieler nochmal spielen möchten
-        // Wenn nein werden die Spieler vom Server getrent 
+        // Fragt, ob die Spieler nochmal spielen möchten
         if (AnsiConsole.Confirm("Möchtest du nochmal spielen?"))
         {
             if (NetworkingManager.ConnectToServer())
@@ -523,16 +544,15 @@ public static class UiHandler
                 GameManager.ChangeState(GameManager.GameState.InLobby);
                 GameManager.ChangeInGameState(GameManager.InGameStateType.NoGame);
             }
-            else
-            {
-                Program.KeepAlive = false;
-                UiHandler.DisplayDisconnectionScreen(new DisconnectionInfo(DisconnectionType.Error, 
-                    WebSocketCloseStatus.EndpointUnavailable, "Connection failed", 
-                    null, null));
-            }
+        }
+        // Wenn nein, wird das Programm beendet
+        else
+        {
+            Program.KeepAlive = false;
         }
     }
     
+    // Wandelt eine Liste von Spielern in eine Liste von Spielernamen um, mit den gewünschten Attributen
     public static List<string> PlayersToPlayerNames(List<PlayerData> players, bool showSelf = true, bool showDead = true, string color = "", RoleType roleForColor = RoleType.NoRole)
     {
         return players.ConvertAll(player =>
@@ -595,7 +615,7 @@ public static class UiHandler
             return;
         }
         
-        // Die ausgewhälte Einstellung kann durch eine eingabe verändert werden
+        // Die ausgewählte Einstellung kann durch eine Eingabe verändert werden
         switch (selectedSetting)
         {
             case NumberSetting setting:
@@ -672,5 +692,29 @@ public static class UiHandler
         AnsiConsole.MarkupLine("\nDrücke [orange3] ENTER [/], um zurück zum Hauptmenü zu gelangen.");
         Console.ReadLine();
         DisplayMainMenu();
+    }
+
+    public static void RpcVoteAnnounceVictim(PlayerData? player)
+    {
+        if (player == null)
+        {
+            // Es wurde kein Opfer gefunden
+            UiHandler.RpcUiMessage(UiMessageType.DrawPlayerNameCircle,
+                $"Die Dorfbewohner haben entschieden!\nNiemand wurde zum Tode verurteilt!");
+        }
+        else
+        {
+            // Es wurde ein Opfer gefunden
+            UiHandler.RpcUiMessage(UiMessageType.DrawPlayerNameCircle,
+                $"Die Dorfbewohner haben entschieden!\n{player.Name} wurde zum Tode verurteilt!");
+            Task.Delay(1000).Wait();
+            
+            if (PlayerData.LocalPlayer.IsHost)
+            {
+                // Host setzt das Opfer auf Tod
+                player.RpcMarkAsDead();
+                PlayerData.RpcProcessDeaths();
+            }
+        }
     }
 }

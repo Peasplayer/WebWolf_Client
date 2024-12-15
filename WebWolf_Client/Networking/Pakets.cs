@@ -3,13 +3,14 @@ using WebWolf_Client.Ui;
 
 namespace WebWolf_Client.Networking;
 
-public class Packets
+// Sammlung an Klassen um die Struktur der Pakete zu definieren
+public static class Pakets
 {
-    public class SyncLobbyPacket
+    public class SyncLobbyPaket
     {
         public PlayerDataPattern[] Players;
 
-        public SyncLobbyPacket(PlayerDataPattern[] players)
+        public SyncLobbyPaket(PlayerDataPattern[] players)
         {
             Players = players;
         }

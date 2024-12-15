@@ -5,24 +5,25 @@ namespace WebWolf_Client.Settings;
 
 public class SettingsManager
 {
+    // Alle Einstellungen die der Benutzer verändern kann
     public static List<Setting> AllSettings = new List<Setting>();
     
     public static readonly StringSetting ServerIp = new StringSetting("Server IP", "ServerIp", "77.90.17.73");
     
-    public static readonly NumberSetting WerwolfMaxAmount = new NumberSetting("Maximale Anzahl Werwölfe", "RoleWerwolfAmount", 3, 1, 7);
-    public static readonly NumberSetting SeherinMaxAmount = new NumberSetting("Maximale Anzahl Seherinnen", "RoleSeherinAmount", 1, 0, 20);
-    public static readonly NumberSetting HexeMaxAmount = new NumberSetting("Maximale Anzahl Hexen", "RoleHexeAmount", 1, 0, 20);
-    public static readonly NumberSetting JägerMaxAmount = new NumberSetting("Maximale Anzahl Jäger", "RoleJägerAmount", 1, 0, 20);
-    public static readonly BooleanSetting AmorEnabled = new BooleanSetting("Amor aktivieren", "AmorEnabled", true);
+    public static NumberSetting WerwolfMaxAmount { get; } = new NumberSetting("Maximale Anzahl Werwölfe", "RoleWerwolfAmount", 3, 1, 7);
+    public static NumberSetting SeherinMaxAmount { get; } = new NumberSetting("Maximale Anzahl Seherinnen", "RoleSeherinAmount", 1, 0, 20);
+    public static NumberSetting HexeMaxAmount { get; } = new NumberSetting("Maximale Anzahl Hexen", "RoleHexeAmount", 1, 0, 20);
+    public static NumberSetting JägerMaxAmount { get; } = new NumberSetting("Maximale Anzahl Jäger", "RoleJägerAmount", 1, 0, 20);
+    public static BooleanSetting AmorEnabled { get; } = new BooleanSetting("Amor aktivieren", "AmorEnabled", true);
 
-    public static readonly FloatSetting HexeActionDuration = new FloatSetting("Dauer Hexe Aktionen (in Sekunden)", "HexeActionDuration", 18,10,30);
-    public static readonly FloatSetting JägerActionDuration = new FloatSetting("Dauer Jäger Aktion (in Sekunden)", "JägerActionDuration", 8,8,30);
-    public static readonly FloatSetting WerwolfActionDuration = new FloatSetting("Dauer Werwolf Aktion (in Sekunden)", "WerwolfActionDuration", 20,20,50);
-    public static readonly FloatSetting SeherinActionDuration = new FloatSetting("Dauer Seherin Aktion (in Sekunden)", "SeherinActionDuration", 8, 8, 30);
-    public static readonly FloatSetting AmorActionDuration = new FloatSetting("Dauer Amor Aktion (in Sekunden)", "AmorActionDuration", 10, 10, 30);
-    public static readonly BooleanSetting AmorMultipleCouples = new BooleanSetting("Armor kann mehrere Paare nacheinander verlieben", "AmorMultipleCouples", false);
+    public static FloatSetting HexeActionDuration { get; } = new FloatSetting("Dauer Hexe Aktionen (in Sekunden)", "HexeActionDuration", 18,10,30);
+    public static FloatSetting JägerActionDuration { get; } = new FloatSetting("Dauer Jäger Aktion (in Sekunden)", "JägerActionDuration", 8,8,30);
+    public static FloatSetting WerwolfActionDuration { get; } = new FloatSetting("Dauer Werwolf Aktion (in Sekunden)", "WerwolfActionDuration", 20,20,50);
+    public static FloatSetting SeherinActionDuration { get; } = new FloatSetting("Dauer Seherin Aktion (in Sekunden)", "SeherinActionDuration", 8, 8, 30);
+    public static FloatSetting AmorActionDuration { get; } = new FloatSetting("Dauer Amor Aktion (in Sekunden)", "AmorActionDuration", 10, 10, 30);
+    public static BooleanSetting AmorMultipleCouples { get; } = new BooleanSetting("Armor kann mehrere Paare nacheinander verlieben", "AmorMultipleCouples", false);
     
-    public static readonly BooleanSetting RevealRoleOnDeath = new BooleanSetting("Rolle bei Tod anzeigen", "RevealRoleOnDeath", true);
+    public static BooleanSetting RevealRoleOnDeath { get; } = new BooleanSetting("Rolle bei Tod anzeigen", "RevealRoleOnDeath", true);
 
     // Bekommt die Dauer, die eine Rolle für seine Aktionen hat 
     public static float GetRoleActionDuration(RoleType role)
@@ -64,6 +65,7 @@ public class SettingsManager
         }
     }
     
+    // Ruft den Wert der Einstellung als Integer ab
     public static int? GetIntValue(string id)
     {
         var settings = ConfigurationManager.AppSettings;
@@ -74,6 +76,7 @@ public class SettingsManager
         return Int32.Parse(raw);
     }
 
+    // Ruft den Wert der Einstellung als Float ab
     public static float? GetFloatValue(string id)
     {
         var settings = ConfigurationManager.AppSettings;
@@ -85,6 +88,7 @@ public class SettingsManager
         return float.Parse(raw);
     }
 
+    // Ruft den Wert der Einstellung als Boolean ab
     public static bool? GetBooleanValue(string id)
     {
         var settings = ConfigurationManager.AppSettings;
@@ -96,6 +100,7 @@ public class SettingsManager
         return bool.Parse(raw);
     }
     
+    // Ruft den Wert der Einstellung als String ab
     public static string? GetStringValue(string id)
     {
         var settings = ConfigurationManager.AppSettings;
@@ -103,6 +108,7 @@ public class SettingsManager
         return raw;
     }
 
+    // Speichert die Einstellung
     public static void SetValue(string id, string value)
     {
         var configFile = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);

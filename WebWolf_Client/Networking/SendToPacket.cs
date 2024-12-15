@@ -1,11 +1,12 @@
 namespace WebWolf_Client.Networking;
 
-public class SendToPacket : NormalPacket
+// Paket das nur an bestimmte Empfänger gesendet wird
+public class SendToPaket : NormalPaket
 {
     public string Receiver;
-    public SendToPacket(string sender, PacketDataType dataType, string data, string receiver) : base(sender, dataType, data)
+    public SendToPaket(string sender, PaketDataType dataType, string data, string receiver) : base(sender, dataType, data)
     {
-        Type = PacketType.SendTo;
+        Type = PaketType.SendTo;
         Receiver = receiver;
     }
 }

@@ -9,6 +9,7 @@ public class StringSetting : Setting
         Value = SettingsManager.GetStringValue(id) ?? defaultValue;
     }
     
+    // Setzt die von dem Benutzer eingestellte Wert in die passende Einstellung
     public void SetValue(string value)
     {
         Value = value;

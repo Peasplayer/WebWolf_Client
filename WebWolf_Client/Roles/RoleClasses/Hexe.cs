@@ -8,7 +8,9 @@ public class Hexe : Role
     public override RoleType RoleType => RoleType.Hexe;
     public override bool IsAliveRole => true;
     
+    // Ob der Heiltrank noch verfügbar ist in diesem Spiel
     private bool HealingPotionAvailable = true;
+    // Ob der Gifttrank noch verfügbar ist in diesem Spiel
     private bool PoisonPotionAvailable = true;
 
     public override void InitRole()
@@ -63,9 +65,10 @@ public class Hexe : Role
                 })) return;
             
             bool usePoisonPotion = false;
-            if (CancelCheck(() => usePoisonPotion = UiHandler.Prompt(new ConfirmationPrompt("Möchtest du deinen [yellow] Gifttrank [/] einsetzen?")))) return;
+            if (CancelCheck(() => usePoisonPotion = UiHandler.Prompt(new ConfirmationPrompt("Möchtest du deinen Gifttrank einsetzen?")))) return;
             if (usePoisonPotion)
             {
+                // Hexe sucht ein Opfer aus
                 if (CancelCheck(() => UiHandler.StartPlayerPrompt(() =>
                         {
                             AnsiConsole.Clear();
@@ -83,7 +86,7 @@ public class Hexe : Role
                     
                             // Der Spieler wird umgebracht
                             victim.RpcMarkAsDead();
-                            UiHandler.LocalUiMessage(UiMessageType.RenderText, $"{victim.Name} wurde [red] vergiftet [/]");
+                            UiHandler.LocalUiMessage(UiMessageType.RenderText, $"{victim.Name} wurde vergiftet");
                         }))) return;
             }
             else
