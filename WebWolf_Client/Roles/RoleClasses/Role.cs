@@ -8,7 +8,7 @@ public abstract class Role
 {
     public abstract RoleType RoleType { get; }
     
-    public abstract bool IsActiveRole { get; }
+    public abstract bool IsAliveRole { get; }
 
     protected bool IsActionCancelled { get; private set; }
 
@@ -16,7 +16,10 @@ public abstract class Role
     {
         IsActionCancelled = true;
         if (PlayerData.LocalPlayer.Role == RoleType)
+        {
             CancelAction();
+            AfterCancel();
+        }
     }
 
     protected virtual void CancelAction()
@@ -26,7 +29,8 @@ public abstract class Role
 
     public virtual void AfterCancel()
     {
-        RpcFinishedAction();
+        if (PlayerData.LocalPlayer.Role == RoleType)
+            RpcFinishedAction();
     }
     
     protected bool CancelCheck(Action test)

@@ -6,7 +6,7 @@ namespace WebWolf_Client.Roles.RoleClasses;
 public class Seherin : Role
 {
     public override RoleType RoleType => RoleType.Seherin;
-    public override bool IsActiveRole => true;
+    public override bool IsAliveRole => true;
 
     public override void ResetAction() { }
 
@@ -15,27 +15,28 @@ public class Seherin : Role
         if (CancelCheck(() => UiHandler.LocalUiMessage(UiMessageType.DrawPlayerNameCircle, "Die Seherin (Du) erwacht..."))) return;
         if (CancelCheck(() => Task.Delay(1000).Wait())) return;
         
-        if (CancelCheck(AnsiConsole.Clear)) return;
-        //AnsiConsole.Write(new Align(new Panel(String.Join(", ", Program.DebugNames)).Header("Spieler"), HorizontalAlignment.Center));
-        if (CancelCheck(() => UiHandler.RenderCard(RoleType.Seherin, "", 10))) return;
-        if (CancelCheck(() => AnsiConsole.WriteLine("\n"))) return;
-        
-        var playerName = "";
-        if (CancelCheck(() => playerName = UiHandler.Prompt(
-                new SelectionPrompt<string>()
-                    .Title("Wähle einen Spieler dessen Karte du sehen möchtest:")
-                    .PageSize(10)
-                    .AddChoices(PlayerData.Players.FindAll(player => player is { IsLocal: false, IsAlive: true })
-                        .ConvertAll(player => player.Name))))) return;
+        // Die Seherin darf sich einen Spieler aussuchen, dessen Rolle sie sehen möchte
+        if (CancelCheck(() => UiHandler.StartPlayerPrompt(() => CancelCheck(() =>
+            {
+                AnsiConsole.Clear();
+                UiHandler.RenderCard(RoleType.Seherin, "", 10);
+                AnsiConsole.WriteLine("\n");
+            }), player => player is { IsLocal: false, IsAlive: true }, "Wähle einen Spieler dessen Role du sehen möchtest:", RevealRole))) return;
+    }
+
+    private void RevealRole(PlayerData player)
+    {
+        // User-Input endet, also wird dies signalisiert
         if (CancelCheck(RpcFinishedAction)) return;
         
-        var player = PlayerData.Players.FirstOrDefault(p => p.Name == playerName);
+        // Rolle des ausgewählten Spielers wird angezeigt
         UiHandler.LocalUiMessage(UiMessageType.RenderText, $"{player.Name} ist ein...");
         Task.Delay(1000).Wait();
         UiHandler.LocalUiMessage(UiMessageType.RenderText, $" {player.Role}!");
         Task.Delay(2000).Wait();
-        UiHandler.LocalUiMessage(UiMessageType.DisplayInGameMenu);
         
+        // Aktion endet
+        UiHandler.LocalUiMessage(UiMessageType.DisplayInGameMenu);
         RpcFinishedAction();
     }
 }

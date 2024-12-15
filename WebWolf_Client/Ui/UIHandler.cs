@@ -1,4 +1,5 @@
 ﻿using System.Drawing;
+using System.Net.WebSockets;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
@@ -12,40 +13,43 @@ namespace WebWolf_Client.Ui;
 
 public static class UiHandler
 {
-    public static bool StartGameMenu()
+    public static void DisplayMainMenu()
     {
         Console.Clear();
         RenderCard(RoleType.Werwolf, "WebWolf");
         
         AnsiConsole.WriteLine("");
-        NetworkingManager.InitialName = UiHandler.Prompt(
-            new TextPrompt<string>("Wie möchtest du im Spiel heißen?")
-                .Validate(n =>
-                {
-                    if (n.Length > 15)
-                    {
-                        ClearConsoleLine(2);
-                        return ValidationResult.Error("[red]Der Name darf maximal 15 Zeichen lang sein![/]");
-                    }
+        var openSettings = UiHandler.Prompt(new SelectionPrompt<string>()
+            .Title("Möchtest du das Spiel starten oder die Einstellungen öffnen?")
+            .AddChoices("Spiel starten", "Einstellungen"));
+        switch (openSettings)
+        {
+            case "Spiel starten":
+                NetworkingManager.InitialName = UiHandler.Prompt(
+                    new TextPrompt<string>("Wie möchtest du im Spiel heißen?")
+                        .Validate(n =>
+                        {
+                            if (n.Length > 15)
+                            {
+                                ClearConsoleLine(2);
+                                return ValidationResult.Error("[red]Der Name darf maximal 15 Zeichen lang sein![/]");
+                            }
         
-                    if (n.Contains(" "))
-                    {
-                        ClearConsoleLine(2);
-                        return ValidationResult.Error("[red]Der Name darf keine Leerzeichen enthalten![/]");
-                    }
+                            if (n.Contains(" "))
+                            {
+                                ClearConsoleLine(2);
+                                return ValidationResult.Error("[red]Der Name darf keine Leerzeichen enthalten![/]");
+                            }
                     
-                    return ValidationResult.Success();
-                }));
-        ClearConsoleLine(2);
-        AnsiConsole.MarkupLine("\nHallo, [green]{0}[/]!", NetworkingManager.InitialName);
+                            return ValidationResult.Success();
+                        }));
+                ClearConsoleLine(2);
+                AnsiConsole.MarkupLine("\nHallo, [green]{0}[/]!", NetworkingManager.InitialName);
+                break;
+            /*case "Einstellungen":
+                DisplaySettings*/
+        }
         
-        var net = new NetworkingManager();
-        net.StartConnection(Program.URL);
-        AnsiConsole.Status()
-            .Spinner(Spinner.Known.Line)
-            .StartAsync("Connecting", _ => net.ConnectionTask.WaitAsync(CancellationToken.None)).Wait();
-
-        return net.Client.IsRunning;
     }
 
     private static bool _AskedQuestion;
@@ -139,6 +143,39 @@ public static class UiHandler
         }
     }
 
+    private static Tuple<Action, Predicate<PlayerData>, string, Action<PlayerData>>? CurrentPlayerPrompt;
+    // Methode um die Spieler-Auswahl erneuern zu können, bei Änderungen
+    public static void StartPlayerPrompt(Action renderPage, Predicate<PlayerData> playerSelector, string text, Action<PlayerData> finishingAction, Func<PlayerData, string>? converter = null)
+    {
+        // Alte Abfrage wird abgebrochen
+        CancelPrompt();
+        // Seite wird gerendert
+        renderPage.Invoke();
+        // Angaben werden gespeichert, für Wiederholungen
+        CurrentPlayerPrompt = new Tuple<Action, Predicate<PlayerData>, string, Action<PlayerData>>(renderPage, playerSelector, text, finishingAction);
+        // Propmt wird ausgeführt
+        var prompt = new SelectionPrompt<PlayerData>()
+            .Title(text)
+            .PageSize(10)
+            .AddChoices(PlayerData.Players.FindAll(playerSelector));
+        prompt.Converter = converter ?? (player => player.Name);
+        var result = Prompt(prompt);
+        // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
+        if (result == null)
+            return;
+        
+        // Nur wenn er erfolgreich war, wird der Callback ausgeführt
+        CurrentPlayerPrompt = null;
+        Program.DebugLog("Inoviking finishing action...");
+        finishingAction.Invoke(result);
+    }
+
+    public static void ReRunPlayerPrompt()
+    {
+        if (CurrentPlayerPrompt != null)
+            StartPlayerPrompt(CurrentPlayerPrompt.Item1, CurrentPlayerPrompt.Item2, CurrentPlayerPrompt.Item3, CurrentPlayerPrompt.Item4);
+    }
+
     public static void ClearConsoleLine(int line = 1)
     {
         int currentLineCursor = Console.CursorTop;
@@ -179,7 +216,6 @@ public static class UiHandler
             AnsiConsole.MarkupLine($"[red]Status: {info.CloseStatus}[/]");
             AnsiConsole.MarkupLine($"[red]Description: {info.CloseStatusDescription}[/]");
             AnsiConsole.MarkupLine($"[red]Exception: {info.Exception?.Message}[/]");
-                
         }
     }
 
@@ -292,6 +328,12 @@ public static class UiHandler
             case UiMessageType.DisplayCardReveal:
                 DisplayCardReveal();
                 break;
+            case UiMessageType.Clear:
+                AnsiConsole.Clear();
+                break;
+            case UiMessageType.RenderCard:
+                RenderCard((RoleType) Enum.Parse(typeof(RoleType), data), "");
+                break;
         }
         
         if (messageId != "")
@@ -328,7 +370,7 @@ public static class UiHandler
                 .ConvertAll(pair => PlayerData.GetPlayer(pair.Key).Name);
             return name + (votes.ToArray().Length > 0 ? $" (Votes: {string.Join(", ", votes)})" : "");
         }
-        var voterList = PlayerData.Players.ConvertAll(player => VotesForOption(player.Id, player.Name));
+        var voterList = PlayerData.Players.FindAll(player => player.IsAlive).ConvertAll(player => VotesForOption(player.Id, player.Name));
         voterList.Add(VotesForOption("skipped", "   Überspringen"));
 
         if (!GameManager.HasVoted)
@@ -365,6 +407,35 @@ public static class UiHandler
             foreach (var player in voterList)
             {
                 AnsiConsole.WriteLine(player); 
+            }
+        }
+    }
+
+    public static void DisplayEndScreen(bool villageWon)
+    {
+        AnsiConsole.Clear();
+        RenderCard(villageWon ? RoleType.Dorfbewohner : RoleType.Werwolf, 
+            (villageWon ? PlayerData.LocalPlayer.Role != RoleType.Werwolf : PlayerData.LocalPlayer.Role == RoleType.Werwolf)
+                ? "GEWONNEN" : "VERLOREN");
+        RenderText(villageWon ? "Die Dorfbewohner haben überlebt! Alle Werwölfe sind Tot."
+            : "Die Werwölfe haben alle Dorfbewohner gefressen!");
+        NetworkingManager.Instance.Client.Stop(WebSocketCloseStatus.NormalClosure, "Game ended");
+        Task.Delay(1000).Wait();
+
+        if (AnsiConsole.Confirm("Möchtest du nochmal spielen?"))
+        {
+            if (NetworkingManager.ConnectToServer())
+            {
+                Program.KeepAlive = true;
+                NetworkingManager.Instance.InitialConnectionSuccessful = true;
+                GameManager.ChangeState(GameManager.GameState.InLobby);
+            }
+            else
+            {
+                Program.KeepAlive = false;
+                UiHandler.DisplayDisconnectionScreen(new DisconnectionInfo(DisconnectionType.Error, 
+                    WebSocketCloseStatus.EndpointUnavailable, "Connection failed", 
+                    null, null));
             }
         }
     }

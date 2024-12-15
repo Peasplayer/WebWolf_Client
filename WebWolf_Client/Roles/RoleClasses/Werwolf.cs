@@ -10,7 +10,7 @@ public class Werwolf : Role
     public static string LastVicitmId;
     
     public override RoleType RoleType => RoleType.Werwolf;
-    public override bool IsActiveRole => true;
+    public override bool IsAliveRole => true;
 
     public Dictionary<string, string> Votes = new Dictionary<string, string>();
     public bool HasVoted;
@@ -44,36 +44,27 @@ public class Werwolf : Role
 
     public void SelectVictim()
     {
-        UiHandler.CancelPrompt();
-        AnsiConsole.Clear();
-        UiHandler.RenderCard(RoleType.Werwolf, "", 10);
-        AnsiConsole.WriteLine("\n");
-        var playerList = PlayerData.Players.FindAll(player => player.Role != RoleType.Werwolf && player.IsAlive).ConvertAll(player =>
+        var renderPage = () =>
         {
+            UiHandler.CancelPrompt();
+            AnsiConsole.Clear();
+            UiHandler.RenderCard(RoleType.Werwolf, "", 10);
+            AnsiConsole.WriteLine("\n");
+        };
+        
+        string PlayerToOption(PlayerData player) {
             var votes = Votes.Where(pair => pair.Value == player.Id).ToList().ConvertAll(pair => PlayerData.GetPlayer(pair.Key).Name);
             return player.Name + (votes.ToArray().Length > 0 ? $" (Votes: {string.Join(", ", votes)})" : "");
-        });
+        }
+        var playerList = PlayerData.Players.FindAll(player => player.Role != RoleType.Werwolf && player.IsAlive).ConvertAll(PlayerToOption);
         if (!HasVoted)
         {
-            var playerName = "";
-            if (CancelCheck(() => playerName = UiHandler.Prompt(
-                    new SelectionPrompt<string>()
-                        .Title("Wähle einen Spieler den du umbringen möchtest:")
-                        .PageSize(10)
-                        .AddChoices(playerList)))) return;
-            Program.DebugLog("Choice: " + playerName);
-        
-            var player = PlayerData.Players.FirstOrDefault(p => p.Name == playerName?.Split(" (Votes: ")[0]);
-            if (player == null)
-                return;
-
-            HasVoted = true;
-            NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
-                new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.WerwolfVote, JsonConvert.SerializeObject(new Packets.SimplePlayerId(player.Id)))));
-            RpcFinishedAction();
+            if (CancelCheck(() => UiHandler.StartPlayerPrompt(renderPage, player => player.Role != RoleType.Werwolf && player.IsAlive,
+                    "Wähle einen Spieler den du umbringen möchtest:", CastVote, PlayerToOption))) return;
         }
         else
         {
+            renderPage();
             foreach (var player in playerList)
             {
                 AnsiConsole.WriteLine(player); 
@@ -81,8 +72,21 @@ public class Werwolf : Role
         }
     }
 
+    private void CastVote(PlayerData player)
+    {
+        Program.DebugLog("Choice: " + player.Name);
+
+        HasVoted = true;
+        NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
+            new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.WerwolfVote, JsonConvert.SerializeObject(new Packets.SimplePlayerId(player.Id)))));
+        RpcFinishedAction();
+    }
+
     public void CalculateVictim()
     {
+        if (!PlayerData.LocalPlayer.IsHost)
+            return;
+        
         if ((Votes.Count == PlayerData.Players.Count(player => player is { Role: RoleType.Werwolf, IsAlive: true }) ||
              IsActionCancelled) && !VoteDone)
         {

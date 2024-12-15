@@ -12,13 +12,20 @@ public class NetworkingManager
     public static NetworkingManager Instance;
 
     public static string InitialName;
+
+    public static bool ConnectToServer()
+    {
+        var net = new NetworkingManager();
+        net.StartConnection(Program.URL);
+        
+        return net.Client.IsRunning;
+    }
     
     public string CurrentId { get; private set; }
     public WebsocketClient Client { get; private set; }
-    public Task ConnectionTask { get; private set; }
     public bool InitialConnectionSuccessful;
     public bool ArePlayersSynced { get; private set; }
-    public NetworkingManager()
+    private NetworkingManager()
     {
         Instance = this;
     }
@@ -36,7 +43,6 @@ public class NetworkingManager
         Client.IsReconnectionEnabled = false;
         Client.ErrorReconnectTimeout = null;
         Client.ReconnectTimeout = TimeSpan.FromSeconds(5);
-        ConnectionTask = Client.Start();
         Client.MessageReceived.Subscribe(msg =>
         {
             if (msg.MessageType == WebSocketMessageType.Text && msg.Text != null)
@@ -53,6 +59,8 @@ public class NetworkingManager
 
             Program.KeepAlive = false;
         });
+        
+        Client.Start().Wait();
     }
 
     private void OnMessage(string message)
@@ -157,6 +165,17 @@ public class NetworkingManager
                         Task.Run(() => GameManager.ChangeState(GameManager.GameState.InGame));
                         break;
                     }
+                    case PacketDataType.EndGame:
+                    {
+                        Program.DebugLog("Received EndGame-packet");
+                        var data = JsonConvert.DeserializeObject<Packets.SimpleBoolean>(normalPacket.Data);
+                        Task.Run(() =>
+                        {
+                            GameManager.ChangeState(GameManager.GameState.NoGame);
+                            UiHandler.DisplayEndScreen(data.Value);
+                        });
+                        break;
+                    }
                     case PacketDataType.SetRole:
                     {
                         Program.DebugLog("Received SetRole-packet");
@@ -180,7 +199,7 @@ public class NetworkingManager
                         Program.DebugLog($"Role {data.Role} is being called");
                         var role = RoleManager.GetRole(data.Role);
                         role.ResetAction();
-                        if (PlayerData.LocalPlayer.Role == data.Role && PlayerData.LocalPlayer.IsAlive)
+                        if (PlayerData.LocalPlayer.Role == data.Role && (PlayerData.LocalPlayer.IsAlive || data.Role == RoleType.Jäger))
                         {
                             Task.Run(role.PrepareAction);
                         }
@@ -202,7 +221,7 @@ public class NetworkingManager
                         else
                         {
                             Program.DebugLog($"{normalPacket.Sender} finished role {data.Role}");
-                            RoleManager.WaitingForRole[normalPacket.Sender] = 2;
+                            RoleManager.WaitingForRole.Remove(normalPacket.Sender);
                         }
                         break;
                     }
@@ -264,6 +283,7 @@ public class NetworkingManager
                         Program.DebugLog("Received VillageVoteStart-packet");
                         GameManager.Votes.Clear();
                         GameManager.HasVoted = !PlayerData.LocalPlayer.IsAlive;
+                        GameManager.VoteIsStarted = true;
                         Task.Run(UiHandler.DisplayVillageVote);
                         break;
                     }
@@ -279,6 +299,7 @@ public class NetworkingManager
                     {
                         Program.DebugLog("Received VillageVoteCanceled-packet");
                         UiHandler.CancelPrompt();
+                        GameManager.VoteIsStarted = false;
                         break;
                     }
                     case PacketDataType.VillageVoteAnnounceVictim:

@@ -9,29 +9,33 @@ public class Hexe : Role
     private bool PoisonPotionAvailable = true;
     public override RoleType RoleType => RoleType.Hexe;
 
-    public override bool IsActiveRole => true;
+    public override bool IsAliveRole => true;
 
     public override void ResetAction() { }
     
     protected override void StartAction()
     {
-        if (CancelCheck(() =>UiHandler.LocalUiMessage(UiMessageType.DrawPlayerNameCircle, "Die Hexe (Du) erwacht..."))) return;
+        if (CancelCheck(() => UiHandler.LocalUiMessage(UiMessageType.DrawPlayerNameCircle, "Die Hexe (Du) erwacht..."))) return;
         if (CancelCheck(() => Task.Delay(1000).Wait())) return;
         
-        if (CancelCheck(AnsiConsole.Clear)) return;
-        if (CancelCheck(() => UiHandler.RenderCard(RoleType.Hexe, "", 10))) return;
-        if (CancelCheck(() => AnsiConsole.WriteLine("\n"))) return;
+        if (CancelCheck(() =>
+            {
+                AnsiConsole.Clear();
+                UiHandler.RenderCard(RoleType.Hexe, "", 10);
+                AnsiConsole.WriteLine("\n");
+            })) return;
         
-        var lastVictim = PlayerData.GetPlayer(Werwolf.LastVicitmId);
         // Falls ein Opfer vorhanden ist, bekommt die Hexe es gesagt
+        var lastVictim = PlayerData.GetPlayer(Werwolf.LastVicitmId);
         if (CancelCheck(() => UiHandler.LocalUiMessage(UiMessageType.RenderText, lastVictim == null ? "Es gibt kein Opfer." : $"Das Opfer der Werwölfe ist {lastVictim.Name}."))) return;
+        Task.Delay(1000).Wait();
         
         // Falls der Heiltrank noch nicht genutzt wurde und es ein Opfer gab, kann die Hexe ihn nutzen
         if (HealingPotionAvailable && lastVictim != null)
         {
             bool useHealPotion = false;
             if (CancelCheck(() => useHealPotion = UiHandler.Prompt(
-                    new ConfirmationPrompt("Möchtest du es heilen?")))) return;
+                    new ConfirmationPrompt("Möchtest du das Opfer der Werwölfe heilen?")))) return;
             // Falls sie es heilen möchte, wird es geheilt
             if (useHealPotion)
             {
@@ -45,32 +49,38 @@ public class Hexe : Role
         }
 
         // Falls der Gift-Trank noch nicht genutzt wurde, kann die Hexe ihn nutzen
-        if (!PoisonPotionAvailable)
+        if (PoisonPotionAvailable)
         {
+            if (CancelCheck(() =>
+                {
+                    AnsiConsole.Clear();
+                    UiHandler.RenderCard(RoleType.Hexe, "", 10);
+                    AnsiConsole.WriteLine("\n");
+                })) return;
+            
             bool usePoisonPotion = false;
             if (CancelCheck(() => usePoisonPotion = UiHandler.Prompt(new ConfirmationPrompt("Möchtest du deinen [yellow] Gifttrank [/] einsetzen?")))) return;
             if (usePoisonPotion)
             {
-                var playerName = "";
-                if (CancelCheck(() => playerName = UiHandler.Prompt(
-                        new SelectionPrompt<string>()
-                            .Title("Wähle ein Opfer aus:")
-                            .PageSize(10)
-                            .AddChoices(PlayerData.Players.FindAll(p => p is { IsAlive: true, IsLocal: false })
-                                .ConvertAll(p => p.Name))))) return;
-                // User-Input endet, also wird dies signalisiert
-                if (CancelCheck(RpcFinishedAction)) return;
+                if (CancelCheck(() => UiHandler.StartPlayerPrompt(() =>
+                        {
+                            AnsiConsole.Clear();
+                            UiHandler.RenderCard(RoleType.Hexe, "", 10);
+                            AnsiConsole.WriteLine("\n");
+                        },
+                        player => player is { IsLocal: false, IsAlive: true },
+                        "Wähle ein Opfer aus:", victim =>
+                        {
+                            // User-Input endet, also wird dies signalisiert
+                            if (CancelCheck(RpcFinishedAction)) return;
                 
-                var victim = PlayerData.Players.FirstOrDefault(p => p.Name == playerName);
-                if (victim != null)
-                {
-                    // Der Trank wird als gebraucht markiert
-                    PoisonPotionAvailable = false;
+                            // Der Trank wird als gebraucht markiert
+                            PoisonPotionAvailable = false;
                     
-                    // Der Spieler wird umgebracht
-                    victim.RpcMarkAsDead();
-                    UiHandler.LocalUiMessage(UiMessageType.RenderText, $"{victim.Name} wurde [red] vergiftet [/]");
-                }
+                            // Der Spieler wird umgebracht
+                            victim.RpcMarkAsDead();
+                            UiHandler.LocalUiMessage(UiMessageType.RenderText, $"{victim.Name} wurde [red] vergiftet [/]");
+                        }))) return;
             }
             else
                 // User-Input endet, also wird dies signalisiert
@@ -82,6 +92,7 @@ public class Hexe : Role
             if (CancelCheck(RpcFinishedAction)) return;
         }
         
+        // Aktion endet
         RpcFinishedAction();
     }
 }

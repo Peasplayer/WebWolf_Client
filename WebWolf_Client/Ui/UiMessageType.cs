@@ -5,5 +5,7 @@ public enum UiMessageType
     RenderText,
     DrawPlayerNameCircle,
     DisplayInGameMenu,
-    DisplayCardReveal
+    DisplayCardReveal,
+    Clear,
+    RenderCard
 }

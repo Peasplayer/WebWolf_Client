@@ -8,6 +8,7 @@ public enum PacketDataType : uint
     SyncLobby,
     SetHost,
     StartGame,
+    EndGame,
     StartNightOrDay,
     
     // Rollen

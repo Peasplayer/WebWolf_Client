@@ -10,7 +10,8 @@ public class RoleManager
     {
         new Seherin(),
         new Werwolf(),
-        new Hexe()
+        new Hexe(),
+        new Jäger()
     };
 
     public static Role GetRole(RoleType roleType)
@@ -66,10 +67,11 @@ public class RoleManager
     // Ruft die Spieler mit der Rolle auf und verwaltet den Ablauf der jeweiligen Aktion
     public static void RpcCallRole(RoleType role)
     {
+        var roleObj = RoleManager.GetRole(role);
         WaitingForRole.Clear();
         foreach (var playerData in PlayerData.Players)
         {
-            if (playerData.Role == role && playerData.IsAlive)
+            if (playerData.Role == role && (playerData.IsAlive || !roleObj.IsAliveRole))
                 WaitingForRole.Add(playerData.Id, 0);
         }
 
@@ -96,9 +98,12 @@ public class RoleManager
                     }
                 }
                 
-                var roleObj = RoleManager.GetRole(role);
-                roleObj.PrepareCancelAction();
-                roleObj.AfterCancel();
+                // Falls irgendwelche Sachen noch vom Host erledigt werden müssen, nachdem die Aktion abgebrochen wurde
+                if (PlayerData.LocalPlayer.Role != role)
+                {
+                    roleObj.PrepareCancelAction();
+                    roleObj.AfterCancel();
+                }
                 break;
             }
         }

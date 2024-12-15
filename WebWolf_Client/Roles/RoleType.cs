@@ -7,4 +7,5 @@ public enum RoleType : uint
     Dorfbewohner,
     Seherin,
     Hexe,
+    Jäger
 }

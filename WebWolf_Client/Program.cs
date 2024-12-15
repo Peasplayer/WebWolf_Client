@@ -20,8 +20,9 @@ class Program
         // Zum Debuggen, so können die Logs zugeordnet werden
         Console.Title = $"WebWolf Client ({Process.GetCurrentProcess().Id})";
         AppDomain.CurrentDomain.UnhandledException += (sender, eventArgs) => DebugLog($"Unhandled Exception: {eventArgs.ExceptionObject}");
-        var isConnected = UiHandler.StartGameMenu();
-        if (isConnected)
+        
+        UiHandler.DisplayMainMenu();
+        if (NetworkingManager.ConnectToServer())
         {
             KeepAlive = true;
             NetworkingManager.Instance.InitialConnectionSuccessful = true;
