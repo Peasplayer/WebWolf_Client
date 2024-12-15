@@ -19,22 +19,27 @@ public static class UiHandler
         Console.Clear();
         RenderCard(RoleType.Werwolf, "WebWolf");
         
+        // Benutzer wird aufgefordert zu wählen welches Menü geöffnet werden soll
         var openSettings = UiHandler.Prompt(new SelectionPrompt<string>()
             .Title("Möchtest du das Spiel starten oder die Einstellungen öffnen?")
-            .AddChoices("Spiel starten", "Einstellungen"));
+            .AddChoices("Spiel starten", "Regeln","Einstellungen"));
         switch (openSettings)
         {
+            // Wen "Spiel starten" ausgewählt wird das Spiel gestartet
             case "Spiel starten":
+                // Benutzer wird aufgefordert einen Namen einzugeben
                 NetworkingManager.InitialName = UiHandler.Prompt(
                     new TextPrompt<string>("Wie möchtest du im Spiel heißen?")
                         .Validate(n =>
                         {
+                            // Name muss kürzer als 15 Zeichen sein
                             if (n.Length > 15)
                             {
                                 ClearConsoleLine(2);
                                 return ValidationResult.Error("[red]Der Name darf maximal 15 Zeichen lang sein![/]");
                             }
         
+                            // Name darf kein Leerzeichen enthalten
                             if (n.Contains(" "))
                             {
                                 ClearConsoleLine(2);
@@ -46,12 +51,14 @@ public static class UiHandler
                 ClearConsoleLine(2);
                 AnsiConsole.MarkupLine("\nHallo, [green]{0}[/]!", NetworkingManager.InitialName);
                 
+                // Client verbindet sich mit dem Server
                 if (NetworkingManager.ConnectToServer())
                 {
                     Program.KeepAlive = true;
                     NetworkingManager.Instance.InitialConnectionSuccessful = true;
                     GameManager.ChangeState(GameManager.GameState.InLobby);
                 }
+                // Wenn Server nicht erreichbar ist, wird ein Fehler ausgegeben
                 else
                 {
                     UiHandler.DisplayDisconnectionScreen(new DisconnectionInfo(DisconnectionType.Error, 
@@ -59,8 +66,13 @@ public static class UiHandler
                         null, null));
                 }
                 break;
+            // Wenn Einstellung ausgewählt wurde, werden die Einstellungen geöffnet
             case "Einstellungen":
                 DisplaySettings();
+                break;
+            // Wenn Regeln ausgewählt wurde, werden die Regeln geöffnet 
+            case "Regeln":
+                DisplayRules();
                 break;
         }
     }
@@ -74,10 +86,10 @@ public static class UiHandler
     
     public static void DisplayLobby()
     {
+        // Tabelle mit allen Spielern die auf dem Server sind. Der erste Spieler, der den Server joint, ist der Host
         AnsiConsole.Clear();
         var table = new Table();
         table.AddColumn("[blue]Name[/]");
-        //table.AddColumn("[blue]ID[/]");
                     
         foreach (var player in PlayerData.Players)
         {
@@ -327,16 +339,29 @@ public static class UiHandler
 
     public static readonly Dictionary<string, List<string>> UiMessagesWaitList = new Dictionary<string, List<string>>();
     
-    public static void RpcUiMessage(UiMessageType type, string data = "")
+    public static void RpcUiMessage(UiMessageType type, string data = "", List<string>? receivers = null)
     {
         var messageId = Guid.NewGuid().ToString();
         UiMessagesWaitList.Add(messageId, new List<string>());
-        foreach (var playerData in PlayerData.Players)
+        foreach (var playerId in receivers ?? PlayerData.Players.ConvertAll(player => player.Id))
         {
-            UiMessagesWaitList[messageId].Add(playerData.Id);
+            UiMessagesWaitList[messageId].Add(playerId);
         }
-        NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
-            new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.UiMessage, JsonConvert.SerializeObject(new Packets.UiMessage(type, data, messageId)))));
+        if (receivers == null)
+        {
+            NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
+                new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.UiMessage,
+                    JsonConvert.SerializeObject(new Packets.UiMessage(type, data, messageId)))));
+        }
+        else
+        {
+            foreach (var receiver in receivers)
+            {
+                NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
+                    new SendToPacket(NetworkingManager.Instance.CurrentId, PacketDataType.UiMessage,
+                        JsonConvert.SerializeObject(new Packets.UiMessage(type, data, messageId)), receiver)));
+            }
+        }
         
         while (UiMessagesWaitList[messageId].Count > 0) { }
     }
@@ -582,5 +607,33 @@ public static class UiHandler
         }
 
         DisplaySettings();
+    }
+
+    public static void DisplayRules()
+    {
+        AnsiConsole.Clear();
+        AnsiConsole.Write(new FigletText("Regeln")
+            .Color(Color.Blue)
+            .Centered()
+        );
+        
+        // Disclaimer, dass man miteinander reden sollte
+        AnsiConsole.Write(new Panel("[red] Das nutzen von Voice Chat oder das Spiel lokal zu spielen ist sehr empfohlen! [/]").Header("[red] Disclaimer [/]"));
+        // Panel für die Regeln des Spieles
+        AnsiConsole.Write(new Panel("Das Ziel des Spiels ist es, alle Werwölfe zu entlarven und zu eliminieren," +
+                                    "bevor die Werwölfe alle Dorfbewohner gefressen haben.").Header("[green] Ziel des Spieles [/]"));
+        AnsiConsole.Write(new Panel("Das Spiel besteht aus Tag- und Nachtphasen. In den Nachtphasen werden die einzelnen Rollen aufgerufen." +
+                                    "\nAm Tag stimmen alle Spieler ab, wen sie für einen Werwolf halten und lynchen möchten.").Header("[green] Spielablauf [/]"));
+        // Panel für die Erklärung der Rollen
+        AnsiConsole.Write(new Panel("Es gibt verschiedene Rollen. Das Ziel der [red] Werwölfe [/] ist es alle [green] Dorfbewohner [/] zu fressen. Sie gewinnen, wenn es gleich viele oder mehr [red] Werwölfe [/] als [green] Dorfbewohner [/] gibt." +
+                                    "\nDie Aufgabe der [green] Dorfbewohner [/] ist es, die [red] Werwölfe [/] zu entlarven und sie tagsüber bei einer Abstimmung zu lynchen." +
+                                    "\n\nDie [green] Seherin [/] ist Teil des Dorfes. Sie kann jede Nacht die Identität eines Spielers erfahren." + 
+                                    "\n\nDie [green] Hexe [/] ist Teil des Dorfes. Sie kann einmalig das Opfer der Werwölfe heilen und einmalig einen Spieler ihrer Wahl töten." +
+                                    "\n\nDer [green] Jäger [/] ist Teil des Dorfes. Wenn er stirbt kann er eine Person mit in den tot reisen." +
+                                    "\n\nDer [green] Amor [/] ist Teil des Dorfes. Er kann einmalig zwei Spieler verlieben. Stirbt einer der beiden, stirbt der andere auch.").Header("[green] Rollen [/]"));
+        
+        AnsiConsole.MarkupLine("\nDrücke [orange3] ENTER [/], um zurück zum Hauptmenü zu gelangen.");
+        Console.ReadLine();
+        DisplayMainMenu();
     }
 }

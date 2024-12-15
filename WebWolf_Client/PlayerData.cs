@@ -1,6 +1,9 @@
 using Newtonsoft.Json;
 using WebWolf_Client.Networking;
 using WebWolf_Client.Roles;
+using WebWolf_Client.Roles.RoleClasses;
+using WebWolf_Client.Settings;
+using WebWolf_Client.Ui;
 
 namespace WebWolf_Client;
 
@@ -21,6 +24,7 @@ public class PlayerData
     public bool IsLocal => LocalPlayer.Id == Id;
     public bool IsMarkedAsDead {get; private set; }
     public bool IsAlive {get; private set; } = true;
+    public bool InLove {get; private set; }
 
     public PlayerData(string name, string? id, bool isHost = false, RoleType role = RoleType.NoRole)
     {
@@ -84,8 +88,47 @@ public class PlayerData
     public static void RpcProcessDeaths()
     {
         if (LocalPlayer.IsHost)
+        {
+            var markedAsDead = PlayerData.Players.FindAll(player => player.IsMarkedAsDead);
             NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
                 new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.PlayerProcessDeaths, "")));
+            
+            Task.Delay(1000).Wait();
+            
+            // Rolle wird offenbart, sofern dies eingestellt ist
+            if (SettingsManager.RevealRoleOnDeath.Value)
+            {
+                UiHandler.RpcUiMessage(UiMessageType.DrawPlayerNameCircle,
+                    string.Join("\n", markedAsDead.ConvertAll(player => $"{player.Name} war {player.Role}")));
+                Task.Delay(2000).Wait();
+            }
+            
+            // Falls ein Jäger gestorben ist, wird seine Aktion ausgeführt
+            var deadJäger = markedAsDead.FindAll(player => player.Role == RoleType.Jäger);
+            if (deadJäger.Count > 0)
+            {
+                foreach (var jäger in deadJäger)
+                {
+                    Jäger.CallJäger(jäger);
+                }
+            }
+
+            var deadLovers = markedAsDead.FindAll(player => player.InLove);
+            if (deadLovers.Count == 1)
+            {
+                var aliveLover = Players.Find(player => player is { InLove: true, IsAlive: true });
+                if (aliveLover != null)
+                {
+                    UiHandler.RpcUiMessage(UiMessageType.DrawPlayerNameCircle, 
+                        $"{aliveLover.Name} war unsterblich verliebt in {deadLovers.First().Name}." +
+                        $"\nDie Nachricht über den Tod von {deadLovers.First().Name} hat {aliveLover.Name}" +
+                        $"\n so sehr getroffen, dass {aliveLover.Name} sich das Leben nimmt.");
+                    aliveLover.RpcMarkAsDead();
+                    Task.Delay(1000).Wait();
+                    PlayerData.RpcProcessDeaths();
+                }
+            }
+        }
     }
     
     public static void ProcessDeaths()
@@ -97,5 +140,17 @@ public class PlayerData
                 player.IsAlive = player.IsMarkedAsDead = false;
             }
         }
+    }
+
+    public void RpcSetInLove()
+    {
+        NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
+            new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.PlayerInLove, 
+                JsonConvert.SerializeObject(new Packets.SimplePlayerId(Id)))));
+    }
+    
+    public void SetInLove()
+    {
+        InLove = true;
     }
 }

@@ -9,6 +9,7 @@ public class RoleManager
 {
     public static List<Role> Roles { get; set; } = new List<Role>()
     {
+        new Amor(),
         new Seherin(),
         new Werwolf(),
         new Hexe(),
@@ -67,24 +68,39 @@ public class RoleManager
     public static Dictionary<string, int> WaitingForRole { get; } = new Dictionary<string, int>();
     
     // Ruft die Spieler mit der Rolle auf und verwaltet den Ablauf der jeweiligen Aktion
-    public static void RpcCallRole(RoleType role)
+    public static void RpcCallRole(RoleType role, PlayerData? target = null)
     {
         var roleObj = RoleManager.GetRole(role);
         WaitingForRole.Clear();
-        foreach (var playerData in PlayerData.Players)
+        if (target != null)
+            WaitingForRole.Add(target.Id, 0);
+        else
         {
-            if (playerData.Role == role && (playerData.IsAlive || !roleObj.IsAliveRole))
-                WaitingForRole.Add(playerData.Id, 0);
+            foreach (var playerData in PlayerData.Players)
+            {
+                if (playerData.Role == role && (playerData.IsAlive || !roleObj.IsAliveRole))
+                    WaitingForRole.Add(playerData.Id, 0);
+            }
         }
 
         if (WaitingForRole.Count == 0)
             return;
 
-        NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
-            new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.CallRole, JsonConvert.SerializeObject(new Packets.SimpleRole(role)))));
+        if (target != null)
+        {
+            NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
+                new SendToPacket(NetworkingManager.Instance.CurrentId, PacketDataType.CallRole,
+                    JsonConvert.SerializeObject(new Packets.SimpleRole(role)), target.Id)));
+        }
+        else
+        {
+            NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
+                new BroadcastPacket(NetworkingManager.Instance.CurrentId, PacketDataType.CallRole,
+                    JsonConvert.SerializeObject(new Packets.SimpleRole(role)))));
+        }
 
         // Setzt die Zeit, die jede Rolle für seine Aktionen, hat auf die eingestellt Zeit 
-        float actionDuration = SettingsManager.GetRoleActionDuration(role.ToString());
+        float actionDuration = SettingsManager.GetRoleActionDuration(role);
         var timer = Task.Delay((int) actionDuration * 1000);
         while (WaitingForRole.Count > 0)
         {

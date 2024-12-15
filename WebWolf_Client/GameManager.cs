@@ -60,21 +60,6 @@ public class GameManager
                     + (markedAsDead.Count > 0 ? string.Join(", ", markedAsDead.ConvertAll(player => player.Name)) + 
                                                 " gestorben " + (markedAsDead.Count > 1 ? "sind!": "ist!") : "alle wohlauf sind!"));
                 PlayerData.RpcProcessDeaths();
-                Task.Delay(1000).Wait();
-                
-                // Rolle wird offenbart, sofern dies eingestellt ist
-                if (SettingsManager.RevealRoleOnDeath.Value)
-                {
-                    UiHandler.RpcUiMessage(UiMessageType.DrawPlayerNameCircle,
-                        string.Join("\n", markedAsDead.ConvertAll(player => $"{player.Name} war {player.Role}")));
-                    Task.Delay(2000).Wait();
-                }
-                
-                // Falls ein Jäger gestorben ist, wird seine Aktion ausgeführt
-                if (markedAsDead.Find(player => player.Role == RoleType.Jäger) != null)
-                {
-                    Jäger.CallJäger();
-                }
                 
                 // Überprüft, ob das Spiel enden sollte ...
                 if (CheckGameEnd())
@@ -88,12 +73,6 @@ public class GameManager
                 UiHandler.RpcUiMessage(UiMessageType.DrawPlayerNameCircle, "Anschließend beratet ihr, die Dorfbewohner, euch...\nWer könnte ein Werwolf sein?");
                 Task.Delay(1000).Wait();
                 RpcStartVillageVote();
-                
-                // Falls ein Jäger gestorben ist, wird seine Aktion ausgeführt
-                if (markedAsDead.Find(player => player.Role == RoleType.Jäger) != null)
-                {
-                    Jäger.CallJäger();
-                }
                 
                 // Überprüft, ob das Spiel enden sollte ...
                 if (CheckGameEnd())
@@ -299,14 +278,6 @@ public class GameManager
                 // Host setzt das Opfer auf Tod
                 player.RpcMarkAsDead();
                 PlayerData.RpcProcessDeaths();
-                
-                // Rolle wird offenbart, sofern dies eingestellt ist
-                if (SettingsManager.RevealRoleOnDeath.Value)
-                {
-                    // Seine Rolle wird offenbart
-                    UiHandler.RpcUiMessage(UiMessageType.DrawPlayerNameCircle, $"{player.Name} war {player.Role}!");
-                    Task.Delay(1000).Wait();
-                }
             }
         }
     }

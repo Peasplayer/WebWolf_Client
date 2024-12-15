@@ -27,6 +27,7 @@ public enum PacketDataType : uint
     PlayerMarkedAsDead,
     PlayerUnmarkedAsDead,
     PlayerProcessDeaths,
+    PlayerInLove,
     
     // Abstimmung
     VillageVoteStart,

@@ -275,7 +275,9 @@ public class NetworkingManager
                     case PacketDataType.PlayerMarkedAsDead:
                     {
                         var data = JsonConvert.DeserializeObject<Packets.SimplePlayerId>(normalPacket.Data);
-                        PlayerData.GetPlayer(data.Id).MarkAsDead(true);
+                        var player = PlayerData.GetPlayer(data.Id);
+                        player.MarkAsDead(true);
+                        Program.DebugLog($"{player.Name} is marked as dead");
                         break;
                     }
                     case PacketDataType.PlayerUnmarkedAsDead:
@@ -287,6 +289,12 @@ public class NetworkingManager
                     case PacketDataType.PlayerProcessDeaths:
                     {
                         PlayerData.ProcessDeaths();
+                        break;
+                    }
+                    case PacketDataType.PlayerInLove:
+                    {
+                        var data = JsonConvert.DeserializeObject<Packets.SimplePlayerId>(normalPacket.Data);
+                        PlayerData.GetPlayer(data.Id).SetInLove();
                         break;
                     }
                     case PacketDataType.VillageVoteStart:
@@ -328,8 +336,8 @@ public class NetworkingManager
                     case PacketDataType.UiMessageFinished:
                     {
                         Program.DebugLog("Received UiMessageFinished-packet");
-                        if (PlayerData.LocalPlayer.IsHost)
-                            UiHandler.UiMessagesWaitList[normalPacket.Data].Remove(normalPacket.Sender);
+                        if (UiHandler.UiMessagesWaitList.TryGetValue(normalPacket.Data, out var value))
+                            value.Remove(normalPacket.Sender);
                         break;
                     }
                     default:

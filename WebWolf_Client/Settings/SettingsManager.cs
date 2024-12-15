@@ -10,35 +10,37 @@ public class SettingsManager
     public static readonly StringSetting ServerIp = new StringSetting("Server IP", "ServerIp", "77.90.17.73");
     
     public static readonly NumberSetting WerwolfMaxAmount = new NumberSetting("Maximale Anzahl Werwölfe", "RoleWerwolfAmount", 3, 1, 7);
-    public static readonly NumberSetting SeherinMaxAmount = new NumberSetting("Maximale Anzahl Seherinnen", "RoleSeherinAmount", 1, 1, 20);
-    public static readonly NumberSetting HexeMaxAmount = new NumberSetting("Maximale Anzahl Hexen", "RoleHexeAmount", 1, 1, 20);
-    public static readonly NumberSetting JägerMaxAmount = new NumberSetting("Maximale Anzahl Jäger", "RoleJägerAmount", 1, 1, 20);
+    public static readonly NumberSetting SeherinMaxAmount = new NumberSetting("Maximale Anzahl Seherinnen", "RoleSeherinAmount", 1, 0, 20);
+    public static readonly NumberSetting HexeMaxAmount = new NumberSetting("Maximale Anzahl Hexen", "RoleHexeAmount", 1, 0, 20);
+    public static readonly NumberSetting JägerMaxAmount = new NumberSetting("Maximale Anzahl Jäger", "RoleJägerAmount", 1, 0, 20);
+    public static readonly BooleanSetting AmorEnabled = new BooleanSetting("Amor aktivieren", "AmorEnabled", true);
 
     public static readonly FloatSetting HexeActionDuration = new FloatSetting("Dauer Hexe Aktionen (in Sekunden)", "HexeActionDuration", 18,10,30);
     public static readonly FloatSetting JägerActionDuration = new FloatSetting("Dauer Jäger Aktion (in Sekunden)", "JägerActionDuration", 8,8,30);
     public static readonly FloatSetting WerwolfActionDuration = new FloatSetting("Dauer Werwolf Aktion (in Sekunden)", "WerwolfActionDuration", 20,20,50);
     public static readonly FloatSetting SeherinActionDuration = new FloatSetting("Dauer Seherin Aktion (in Sekunden)", "SeherinActionDuration", 8, 8, 30);
-
-
-
-        
+    public static readonly FloatSetting AmorActionDuration = new FloatSetting("Dauer Amor Aktion (in Sekunden)", "AmorActionDuration", 10, 10, 30);
+    public static readonly BooleanSetting AmorMultipleCouples = new BooleanSetting("Armor kann mehrere Paare nacheinander verlieben", "AmorMultipleCouples", false);
+    
     public static readonly BooleanSetting RevealRoleOnDeath = new BooleanSetting("Rolle bei Tod anzeigen", "RevealRoleOnDeath", true);
 
     // Bekommt die Dauer, die eine Rolle für seine Aktionen hat 
-    public static float GetRoleActionDuration(string role)
+    public static float GetRoleActionDuration(RoleType role)
     {
         switch (role)
         {
-            case "Hexe":
-            return HexeActionDuration.Value;
-            case "Jäger":
-            return JägerActionDuration.Value;
-            case "Werwolf":
-            return WerwolfActionDuration.Value;
-            case "Seherin":
-            return SeherinActionDuration.Value;
+            case RoleType.Werwolf:
+                return WerwolfActionDuration.Value;
+            case RoleType.Hexe:
+                return HexeActionDuration.Value;
+            case RoleType.Seherin:
+                return SeherinActionDuration.Value;
+            case RoleType.Jäger:
+                return JägerActionDuration.Value;
+            case RoleType.Amor:
+                return AmorActionDuration.Value;
             default:
-            return 10;
+                return 10;
         }
     }
     
@@ -55,6 +57,8 @@ public class SettingsManager
                 return HexeMaxAmount.Value;
             case RoleType.Jäger:
                 return JägerMaxAmount.Value;
+            case RoleType.Amor:
+                return AmorEnabled.Value ? 1 : 0;
             default:
                 return 0;
         }
