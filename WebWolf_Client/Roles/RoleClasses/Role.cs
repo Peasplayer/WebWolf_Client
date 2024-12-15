@@ -51,6 +51,7 @@ public abstract class Role
     public void PrepareAction()
     {
         IsActionCancelled = false;
+        UiHandler.IsInInGameMenu = false;
         StartAction();
     }
 

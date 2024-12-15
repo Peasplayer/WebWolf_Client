@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Net.WebSockets;
+using Spectre.Console;
 using WebWolf_Client.Networking;
 using WebWolf_Client.Ui;
 
@@ -18,6 +19,7 @@ class Program
         // Zum Debuggen, so können die Logs zugeordnet werden
         Console.Title = $"WebWolf Client ({Process.GetCurrentProcess().Id})";
         AppDomain.CurrentDomain.UnhandledException += (sender, eventArgs) => DebugLog($"Unhandled Exception: {eventArgs.ExceptionObject}");
+        AnsiConsole.Cursor.Hide();
         
         UiHandler.DisplayMainMenu();
 

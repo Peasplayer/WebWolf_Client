@@ -148,6 +148,9 @@ public class GameManager
                 
                 // ... werden alle Abfragen nach Spielern erneuert
                 UiHandler.ReRunPlayerPrompt();
+                
+                if (UiHandler.IsInInGameMenu)
+                    UiHandler.DisplayInGameMenu(true);
             }
             // ... und es gerade Tag ist ...
             else if (InGameState == InGameStateType.Day)

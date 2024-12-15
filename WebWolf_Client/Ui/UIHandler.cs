@@ -325,9 +325,21 @@ public static class UiHandler
     }
     
     // Stellt Text Zeichen für Zeichen um einen Mittelpunkt herum dar
-    private static void RenderTextAroundPoint(Point point, string text, int delayBetweenChar = 47, int delayBetweenLines = 200)
+    private static void RenderTextAroundPoint(Point point, string text, bool instant, int delayBetweenChar = 47, int delayBetweenLines = 200)
     {
         var lines = text.Split('\n');
+        if (instant)
+        {
+            for (var i = 0; i < lines.Length; i++)
+            {
+                var line = lines[i];
+                AnsiConsole.Cursor.SetPosition(point.X - line.Length / 2, point.Y - lines.Length / 2 + i);
+                AnsiConsole.Write(line);
+                if (i < lines.Length - 1)
+                    AnsiConsole.Write("\n");
+            }
+            return;
+        }
         
         for (var i = 0; i < lines.Length; i++)
         {
@@ -377,27 +389,32 @@ public static class UiHandler
         switch (type)
         {
             case UiMessageType.RenderText:
+                IsInInGameMenu = false;
                 RenderText(data);
                 break;
             case UiMessageType.DrawPlayerNameCircle:
+                IsInInGameMenu = false;
                 if (data.StartsWith("{") && data.EndsWith("}"))
                 {
                     var specialData = JsonConvert.DeserializeObject<UiMessageClasses.SpecialPlayerCircle>(data);
-                    DrawPlayerNameCircle(specialData.CenterText, specialData.PlayerNames);
+                    DrawPlayerNameCircle(specialData.CenterText, false, specialData.PlayerNames);
                 }
                 else
                     DrawPlayerNameCircle(data);
                 break;
             case UiMessageType.DisplayInGameMenu:
-                DisplayInGameMenu();
+                DisplayInGameMenu(false);
                 break;
             case UiMessageType.DisplayCardReveal:
+                IsInInGameMenu = false;
                 DisplayCardReveal();
                 break;
             case UiMessageType.Clear:
+                IsInInGameMenu = false;
                 AnsiConsole.Clear();
                 break;
             case UiMessageType.RenderCard:
+                IsInInGameMenu = false;
                 RenderCard((RoleType) Enum.Parse(typeof(RoleType), data), "");
                 break;
         }
@@ -408,18 +425,23 @@ public static class UiHandler
     }
     
     // Zeichnet die Namen der Spieler in den berechneten Kreis 
-    private static void DrawPlayerNameCircle(string centerText = "", List<string>? playerNames = null)
+    private static void DrawPlayerNameCircle(string centerText = "", bool instant = false, List<string>? playerNames = null)
     {
         var point = DrawCircle(playerNames ?? PlayersToPlayerNames(PlayerData.Players));
         if (centerText != "")
-            RenderTextAroundPoint(point, centerText);
+            RenderTextAroundPoint(point, centerText, instant);
     }
 
-    private static void DisplayInGameMenu()
+    public static bool IsInInGameMenu { get; set; }
+    
+    // Zeigt alle Spiler in einem Kreis und den Text "Alle Dorfbewohner schlafen (zzZ)"
+    public static void DisplayInGameMenu(bool instant)
     {
-        DrawPlayerNameCircle(GameManager.InGameState == GameManager.InGameStateType.Night ? "Alle Dorfbewohner schlafen (zzZ)" : "Tag");
+        IsInInGameMenu = true;
+        DrawPlayerNameCircle(GameManager.InGameState == GameManager.InGameStateType.Night ? "Alle Dorfbewohner schlafen (zzZ)" : "Tag", instant);
     }
-
+    
+    // Alle Spiler stimmen Tagsüber ab wen sie lynchen wollen
     public static void DisplayVillageVote()
     {
         UiHandler.CancelPrompt();
@@ -478,6 +500,7 @@ public static class UiHandler
         }
     }
 
+    // zeigt den end screen in dem Angezeigt wird welches Team gewonnen hat 
     public static void DisplayEndScreen(bool villageWon)
     {
         AnsiConsole.Clear();
@@ -488,7 +511,9 @@ public static class UiHandler
             : "Die Werwölfe haben alle Dorfbewohner gefressen!");
         NetworkingManager.Instance.Client.Stop(WebSocketCloseStatus.NormalClosure, "Game ended");
         Task.Delay(1000).Wait();
-
+        
+        // Fragt ob die Spieler nochmal spielen möchten
+        // Wenn nein werden die Spieler vom Server getrent 
         if (AnsiConsole.Confirm("Möchtest du nochmal spielen?"))
         {
             if (NetworkingManager.ConnectToServer())
@@ -518,20 +543,22 @@ public static class UiHandler
             result += player.Name;
             if (color != "" && (roleForColor == RoleType.NoRole || player.Role == roleForColor))
                 result += "[/]";
-            if (showSelf && player.IsLocal)
+            if (showSelf && player.IsLocal) // Hinter dem lokalen Spieler wird in grün "Du" angezeigt
                 result += " [green](Du)[/]";
-            if (showDead && !player.IsAlive)
+            if (showDead && !player.IsAlive) // Hinter Toten Spielern wird in rot "Tot" angezeigt
                 result += " [red](Tot)[/]";
 
             return result;
         });
     }
 
+    // Zeigt die Einstellungen an
     public static void DisplaySettings()
     {
         AnsiConsole.Clear();
         AnsiConsole.Markup("[blue]Einstellungen[/]");
 
+        // Fügt alle möglichen Einstellung ,und die Option zurück zum Hauptmenü zu gehen, in eine Auswahl ein aus die der Benutzer wählen kann
         var prompt = new SelectionPrompt<string>()
             .Title("Wähle eine Option:");
         prompt.AddChoice("[[Zurück zum Hauptmenü]]");
@@ -543,7 +570,7 @@ public static class UiHandler
                     prompt.AddChoice($"{setting.Name}: {setting.Value}");
                     break;
                 case FloatSetting setting:
-                    prompt.AddChoice($"{setting.Name}: {setting.Value.ToString("0.0")}");
+                    prompt.AddChoice($"{setting.Name}: {setting.Value.ToString("0.0")}"); // Float settings werden mit einer nachkommer Zahl angezeigt
                     break;
                 case BooleanSetting setting:
                     prompt.AddChoice($"{setting.Name}: {(setting.Value ? "Ja" : "Nein")}");
@@ -568,16 +595,17 @@ public static class UiHandler
             return;
         }
         
+        // Die ausgewhälte Einstellung kann durch eine eingabe verändert werden
         switch (selectedSetting)
         {
             case NumberSetting setting:
                 var numberPrompt = new TextPrompt<int>($"Gib einen neuen Wert für \"{setting.Name}\" ein:")
                     .DefaultValue(setting.Value)
-                    .ValidationErrorMessage("Ungültige Eingabe!")
+                    .ValidationErrorMessage("Ungültige Eingabe!") // Wenn die Eingabe ungültig ist, wir das dem Benutzer gesagt
                     .Validate(n =>
                     {
                         if (n < setting.Min || n > setting.Max)
-                            return ValidationResult.Error($"Der Wert muss zwischen {setting.Min} und {setting.Max} liegen!");
+                            return ValidationResult.Error($"Der Wert muss zwischen {setting.Min} und {setting.Max} liegen!"); // Überprüft ob der eingegebene wert zwischen dem min und max wert liegt
                         return ValidationResult.Success();
                     });
                 var newNumber = UiHandler.Prompt(numberPrompt);
@@ -586,11 +614,11 @@ public static class UiHandler
             case FloatSetting setting:
                 var floatPrompt = new TextPrompt<float>($"Gib einen neuen Wert für \"{setting.Name}\" ein:")
                     .DefaultValue(setting.Value)
-                    .ValidationErrorMessage("Ungültige Eingabe!")
+                    .ValidationErrorMessage("Ungültige Eingabe!") // Wenn die Eingabe ungültig ist, wir das dem Benutzer gesagt
                     .Validate(n =>
                     {
                         if (n < setting.Min || n > setting.Max)
-                            return ValidationResult.Error($"Der Wert muss zwischen {setting.Min} und {setting.Max} liegen!");
+                            return ValidationResult.Error($"Der Wert muss zwischen {setting.Min} und {setting.Max} liegen!"); // Überprüft ob der eingegebene wert zwischen dem min und max wert liegt
                         return ValidationResult.Success();
                     });
                 var newFloat = UiHandler.Prompt(floatPrompt);
@@ -606,9 +634,9 @@ public static class UiHandler
                 setting.SetValue(newBool);
                 break;
             case StringSetting setting:
-                var stringPrompt = new TextPrompt<string>($"Gib einen neuen Wert für \"{setting.Name}\" ein:")
+                var stringPrompt = new TextPrompt<string>($"Gib einen neuen Wert für \"{setting.Name}\" ein:") // Überprüft ob der eingegebene wert zwischen dem min und max wert liegt
                     .DefaultValue(setting.Value)
-                    .ValidationErrorMessage("Ungültige Eingabe!");
+                    .ValidationErrorMessage("Ungültige Eingabe!"); // Wenn die Eingabe ungültig ist, wir das dem Benutzer gesagt
                 var newString = UiHandler.Prompt(stringPrompt);
                 setting.SetValue(newString);
                 break;
@@ -617,10 +645,11 @@ public static class UiHandler
         DisplaySettings();
     }
 
+    // Zeigt die Relgen in einem Panel pro Punkt an
     public static void DisplayRules()
     {
         AnsiConsole.Clear();
-        AnsiConsole.Write(new FigletText("Regeln")
+        AnsiConsole.Write(new FigletText("Regeln") // Schreibt "Regeln" in einem besonderem Text Font
             .Color(Color.Blue)
             .Centered()
         );
