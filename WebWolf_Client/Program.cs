@@ -34,13 +34,15 @@ class Program
     public static void DebugLog(string log)
     {
         try
-        {
-            File.AppendAllText(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + $"\\WebWolf\\debug-{Process.GetCurrentProcess().Id}.log", $"[{DateTime.Now}] {log}\n");
+        {var path = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\WebWolf";
+                     if (!Directory.Exists(path))
+                         Directory.CreateDirectory(path);
+                     File.AppendAllText(path + $"\\debug-{Process.GetCurrentProcess().Id}.log", $"[{DateTime.Now}] {log}\n");
+            
         }
         catch (Exception _)
         {
-            DebugLog($"Exception during logging: {_}");
-            DebugLog(log);
+            // ignored
         }
     }
 }
