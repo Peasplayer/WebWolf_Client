@@ -529,10 +529,13 @@ public static class UiHandler
         RenderCard(villageWon ? RoleType.Dorfbewohner : RoleType.Werwolf, 
             (villageWon ? PlayerData.LocalPlayer.Role != RoleType.Werwolf : PlayerData.LocalPlayer.Role == RoleType.Werwolf)
                 ? "GEWONNEN" : "VERLOREN");
-        RenderText(villageWon ? "Die Dorfbewohner haben überlebt! Alle Werwölfe sind Tot."
-            : "Die Werwölfe haben alle Dorfbewohner gefressen!");
+        RenderText(villageWon ? "Die Dorfbewohner haben überlebt! Alle Werwölfe sind Tot.\n"
+            : "Die Werwölfe haben alle Dorfbewohner gefressen!\n");
+
+        // Deaktiviert den Disconnection-Screen
+        NetworkingManager.Instance.InitialConnectionSuccessful = false;
         NetworkingManager.Instance.Client.Stop(WebSocketCloseStatus.NormalClosure, "Game ended");
-        Task.Delay(1000).Wait();
+        Task.Delay(2000).Wait();
         
         // Fragt, ob die Spieler nochmal spielen möchten
         if (AnsiConsole.Confirm("Möchtest du nochmal spielen?"))
@@ -545,10 +548,10 @@ public static class UiHandler
                 GameManager.ChangeInGameState(GameManager.InGameStateType.NoGame);
             }
         }
-        // Wenn nein, wird das Programm beendet
+        // Wenn nein, wird das Hauptmenü geöffnet
         else
         {
-            Program.KeepAlive = false;
+            DisplayMainMenu();
         }
     }
     

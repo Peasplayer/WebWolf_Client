@@ -134,6 +134,12 @@ public class GameManager
                 return;
             }
 
+            // Spieler wird aus allen UI-Wartelisten entfernt
+            foreach (var keyValuePair in UiHandler.UiMessagesWaitList)
+            {
+                keyValuePair.Value.Remove(player.Id);
+            }
+            
             // ... und es gerade Nacht ist ...
             if (InGameState == InGameStateType.Night)
             {
@@ -316,16 +322,16 @@ public class GameManager
         // Wenn die Dorfbewohner gewonnen haben, wird ihre Karte angezeigt
         if (werwolves == 0)
         {
-            UiHandler.RpcUiMessage(UiMessageType.Clear);
-            UiHandler.RpcUiMessage(UiMessageType.RenderCard, RoleType.Dorfbewohner.ToString());
-            UiHandler.RpcUiMessage(UiMessageType.RenderText, "Die Dorfbewohner haben überlebt! Alle Werwölfe sind Tot.");
+            NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
+                new BroadcastPaket(NetworkingManager.Instance.CurrentId, PaketDataType.EndGame,
+                    JsonConvert.SerializeObject(new Pakets.SimpleBoolean(true)))));
         }
         // Wenn die Werwölfe gewonnen haben, wird ihre Karte angezeigt 
         else if (werwolves >= villagers)
         {
-            UiHandler.RpcUiMessage(UiMessageType.Clear);
-            UiHandler.RpcUiMessage(UiMessageType.RenderCard, RoleType.Werwolf.ToString());
-            UiHandler.RpcUiMessage(UiMessageType.RenderText, "Die Werwölfe haben alle Dorfbewohner gefressen!");
+            NetworkingManager.Instance.Client.Send(JsonConvert.SerializeObject(
+                new BroadcastPaket(NetworkingManager.Instance.CurrentId, PaketDataType.EndGame,
+                    JsonConvert.SerializeObject(new Pakets.SimpleBoolean(false)))));
         }
     }
 }

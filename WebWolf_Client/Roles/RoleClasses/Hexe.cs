@@ -40,6 +40,7 @@ public class Hexe : Role
         if (HealingPotionAvailable && lastVictim != null)
         {
             bool useHealPotion = false;
+            if (CancelCheck(AnsiConsole.WriteLine)) return;
             if (CancelCheck(() => useHealPotion = UiHandler.Prompt(
                     new ConfirmationPrompt("Möchtest du das Opfer der Werwölfe heilen?")))) return;
             // Falls sie es heilen möchte, wird es geheilt
@@ -50,7 +51,10 @@ public class Hexe : Role
                     
                 // Der Spieler wird wiederbelebt
                 lastVictim.RpcUnmarkAsDead();
-                UiHandler.LocalUiMessage(UiMessageType.RenderText, $"{lastVictim.Name} wurde geheilt.");
+                if (CancelCheck(() =>
+                        UiHandler.LocalUiMessage(UiMessageType.RenderText, $"{lastVictim.Name} wurde geheilt.")))
+                    return;
+                if (CancelCheck(() => Task.Delay(1000).Wait())) return;
             }
         }
 
@@ -87,6 +91,7 @@ public class Hexe : Role
                             // Der Spieler wird umgebracht
                             victim.RpcMarkAsDead();
                             UiHandler.LocalUiMessage(UiMessageType.RenderText, $"{victim.Name} wurde vergiftet");
+                            Task.Delay(1000).Wait();
                         }))) return;
             }
             else
